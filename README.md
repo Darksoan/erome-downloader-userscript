@@ -63,8 +63,12 @@ Userscript para o Erome com painel lateral moderno para selecionar mídias, baix
 ## Configuração do Telegram
 
 - `Token do Bot`: crie um bot no BotFather e copie o token.
-- `Chat ID`: use o ID do usuário, grupo ou canal.
-- IDs de grupo podem ser normalizados automaticamente.
+- `Chat ID`: informe o destino que receberá as mídias.
+- Usuário privado: use o ID numérico direto, por exemplo `123456789`.
+- Grupo ou supergrupo: use o formato completo com `-100`, por exemplo `-1001234567890`.
+- Canal público ou grupo com username: use o formato `@nome_do_canal` ou `@nome_do_grupo`.
+- Se você informar um ID negativo sem `-100`, o script tenta normalizar automaticamente adicionando o prefixo.
+- O bot precisa estar no grupo/canal e ter permissão para enviar mídias.
 
 ## Estrutura
 
