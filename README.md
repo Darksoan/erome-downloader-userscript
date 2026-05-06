@@ -1,83 +1,84 @@
 # Erome Downloader
 
-Userscript para o Erome com painel lateral moderno para selecionar mídias, baixar arquivos em lote e enviar itens para o Telegram.
+A userscript for Erome that adds a modern side panel to select media, download files in bulk, and send items to Telegram.
 
-## Demonstração
+## Preview
 
-![Preview do Erome Downloader](preview.jpeg)
+![Erome Downloader preview](preview.jpeg)
 
 ## Download
 
 - `Latest release`: `https://github.com/Darksoan/erome-downloader/releases/latest/download/erome-downloader.user.js`
 
-## Resumo
+## Summary
 
-- Adiciona um modal flutuante com abas para download, Telegram e configuração.
-- Permite selecionar mídias individualmente ou em massa.
-- Inclui botões inline na página para baixar ou enviar cada mídia rapidamente.
-- Salva histórico local de Chat IDs para facilitar o uso recorrente.
-- Usa `GM_setValue` apenas para guardar token e Chat ID localmente no navegador.
+- Adds a floating panel with Download, Telegram, and Config tabs.
+- Lets you select media individually or in bulk.
+- Adds inline buttons to quickly download or send each media item to Telegram.
+- Stores recent Chat IDs locally for repeated use.
+- Uses `GM_setValue` only to store the bot token and Chat ID locally in your browser.
 
-## Requisitos
+## Requirements
 
-- Extensão/gerenciador de userscript: Tampermonkey, Violentmonkey, Greasemonkey ou outro compatível.
-- Acesso ao domínio `erome.com`.
-- Para envio ao Telegram, um bot ativo e um `Chat ID` válido.
+- A userscript manager extension: Tampermonkey, Violentmonkey, Greasemonkey, or another compatible manager.
+- Access to `erome.com`.
+- For Telegram delivery, an active Telegram bot and a valid `Chat ID`.
 
-## Instalação
+## Installation
 
-### Opção 1: instalar pela extensão
+### Install With A Userscript Manager
 
-1. Instale uma extensão de userscript no navegador, como Tampermonkey, Violentmonkey ou Greasemonkey.
-2. Abra o arquivo `erome-downloader.user.js`.
-3. Clique no link da release ou copie o conteúdo do script para um novo userscript na extensão.
-4. Salve e ative o script.
-5. Acesse uma página do Erome para o painel aparecer.
+1. Install a userscript manager extension, such as Tampermonkey, Violentmonkey, or Greasemonkey.
+2. Open `erome-downloader.user.js`.
+3. Use the release link or copy the script content into a new userscript in your extension.
+4. Save and enable the script.
+5. Open an Erome page and the side panel should appear.
 
-### Extensões compatíveis
+### Compatible Extensions
 
-- Tampermonkey: opção mais comum no Chrome, Edge e Firefox.
-- Violentmonkey: leve e compatível com a maioria dos usuários.
-- Greasemonkey: alternativa tradicional no Firefox.
-- Outros gerenciadores de userscript compatíveis com `// ==UserScript==` também devem funcionar.
+- Tampermonkey: common option for Chrome, Edge, and Firefox.
+- Violentmonkey: lightweight and broadly compatible.
+- Greasemonkey: traditional option for Firefox.
+- Other userscript managers compatible with `// ==UserScript==` should also work.
 
-## Uso
+## Usage
 
-1. Abra uma página com mídia no Erome.
-2. Clique na aba lateral para abrir o painel.
-3. Na aba `Download`, selecione os itens desejados.
-4. Clique em `Baixar Selecionados` para fazer download em lote.
-5. Na aba `Telegram`, informe o `Chat ID` e salve.
-6. Na aba `Config`, informe o token do bot e salve localmente.
-7. Use `Enviar Selecionados` para mandar os arquivos para o Telegram.
-8. Use `Testar Conexão` para validar token e Chat ID.
+1. Open an Erome page that contains media.
+2. Click the side tab to open the panel.
+3. In the `Download` tab, select the items you want.
+4. Click `Baixar Selecionados` to download selected items in bulk.
+5. In the `Telegram` tab, enter the `Chat ID` and save it.
+6. In the `Config` tab, enter your bot token and save it locally.
+7. Use `Enviar Selecionados` to send selected files to Telegram.
+8. Use `Testar Conexão` to validate the token and Chat ID.
 
-## Funcionalidades
+## Features
 
-- Download em lote com barra de progresso.
-- Envio de mídia para Telegram em grupos de arquivos.
-- Botões inline por mídia: download e envio ao Telegram.
-- Histórico de Chat IDs recentes.
-- Interface lateral com tema escuro.
+- Bulk download with progress bar.
+- Telegram media delivery in file groups.
+- Inline media buttons for download and Telegram sending.
+- Recent Chat ID history.
+- Dark side-panel interface.
 
-## Configuração do Telegram
+## Telegram Setup
 
-- Para enviar mídias pelo Telegram, você precisa de um bot criado no Telegram e do token desse bot.
-- Crie o bot pelo BotFather, usando o comando `/newbot`, e copie o token gerado.
-- No painel do Erome Downloader, abra a aba `Config`, cole o token em `Token do Bot` e clique em `Salvar Token`.
-- O token é salvo localmente pelo gerenciador de userscript e é usado apenas para chamar a API do Telegram.
-- `Chat ID`: informe o destino que receberá as mídias.
-- Usuário privado: use o ID numérico direto, por exemplo `123456789`.
-- Grupo ou supergrupo: use o formato completo com `-100`, por exemplo `-1001234567890`.
-- Canal público ou grupo com username: use o formato `@nome_do_canal` ou `@nome_do_grupo`.
-- Se você informar um ID negativo sem `-100`, o script tenta normalizar automaticamente adicionando o prefixo.
-- O bot precisa estar no grupo/canal e ter permissão para enviar mídias.
+- To send media through Telegram, you need a Telegram bot and that bot's token.
+- Create the bot with BotFather using the `/newbot` command, then copy the generated token.
+- In Erome Downloader, open the `Config` tab, paste the token into `Token do Bot`, and click `Salvar Token`.
+- The token is stored locally by the userscript manager and is only used to call the Telegram API.
+- `Chat ID`: enter the destination that should receive the media.
+- Private user: use the numeric ID directly, for example `123456789`.
+- Group or supergroup: use the full `-100` format, for example `-1001234567890`.
+- Public channel or group with a username: use `@channel_name` or `@group_name`.
+- If you enter a negative ID without `-100`, the script tries to normalize it automatically by adding the prefix.
+- The bot must be added to the group/channel and must have permission to send media.
 
-## Estrutura
+## Structure
 
-- `erome-downloader.user.js`: userscript principal.
-- `README.md`: resumo e instruções de uso.
+- `erome-downloader.user.js`: main userscript.
+- `README.md`: summary and usage documentation.
+- `preview.jpeg`: README preview image.
 
-## Licença
+## License
 
 MIT.
