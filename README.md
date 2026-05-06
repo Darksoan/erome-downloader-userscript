@@ -77,6 +77,8 @@ A userscript for Erome that adds a modern side panel to select media, download f
 
 - `erome-downloader.user.js`: main userscript.
 - `README.md`: summary and usage documentation.
+- `CHANGELOG.md`: version history.
+- `LICENSE`: MIT license text.
 - `preview.jpeg`: README preview image.
 
 ## License
