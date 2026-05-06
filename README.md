@@ -16,17 +16,32 @@ Userscript para o Erome com painel lateral moderno para selecionar mídias, baix
 
 ## Requisitos
 
-- Extensão de userscript: Tampermonkey ou Greasemonkey.
+- Extensão/gerenciador de userscript: Tampermonkey, Violentmonkey, Greasemonkey ou outro compatível.
 - Acesso ao domínio `erome.com`.
 - Para envio ao Telegram, um bot ativo e um `Chat ID` válido.
 
 ## Instalação
 
-1. Abra o arquivo `erome-downloader.user.js`.
-2. Baixe a versão publicada em `Releases` ou use o arquivo `erome-downloader.user.js`.
-3. Crie um novo userscript na sua extensão.
-4. Cole o conteúdo do arquivo e salve.
+### Opção 1: instalar pela extensão
+
+1. Instale uma extensão de userscript no navegador, como Tampermonkey, Violentmonkey ou Greasemonkey.
+2. Abra o arquivo `erome-downloader.user.js`.
+3. Clique no link da release ou copie o conteúdo do script para um novo userscript na extensão.
+4. Salve e ative o script.
 5. Acesse uma página do Erome para o painel aparecer.
+
+### Opção 2: instalar pela release
+
+1. Abra a release mais recente.
+2. Baixe `erome-downloader.user.js`.
+3. Importe o arquivo na sua extensão de userscript ou cole o conteúdo em um novo script.
+
+### Extensões compatíveis
+
+- Tampermonkey: opção mais comum no Chrome, Edge e Firefox.
+- Violentmonkey: leve e compatível com a maioria dos usuários.
+- Greasemonkey: alternativa tradicional no Firefox.
+- Outros gerenciadores de userscript compatíveis com `// ==UserScript==` também devem funcionar.
 
 ## Uso
 
