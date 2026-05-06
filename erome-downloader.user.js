@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Better Erome Download Manager
+// @name         Erome Downloader
 // @namespace    greasyfork.org
 // @icon         https://www.erome.com/android-chrome-192x192.png
 // @description  Modal flutuante moderno para baixar mídias do Erome com seleção múltipla e envio via Telegram

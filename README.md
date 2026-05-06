@@ -1,6 +1,10 @@
-# Better Erome Download Manager
+# Erome Downloader
 
 Userscript para o Erome com painel lateral moderno para selecionar mídias, baixar arquivos em lote e enviar itens para o Telegram.
+
+## Download
+
+- `Latest release`: `https://github.com/Darksoan/erome-downloader/releases/latest/download/erome-downloader.user.js`
 
 ## Resumo
 
@@ -18,10 +22,11 @@ Userscript para o Erome com painel lateral moderno para selecionar mídias, baix
 
 ## Instalação
 
-1. Abra o arquivo `eromewithtelegram.js`.
-2. Crie um novo userscript na sua extensão.
-3. Cole o conteúdo do arquivo e salve.
-4. Acesse uma página do Erome para o painel aparecer.
+1. Abra o arquivo `erome-downloader.user.js`.
+2. Baixe a versão publicada em `Releases` ou use o arquivo `erome-downloader.user.js`.
+3. Crie um novo userscript na sua extensão.
+4. Cole o conteúdo do arquivo e salve.
+5. Acesse uma página do Erome para o painel aparecer.
 
 ## Uso
 
@@ -50,7 +55,7 @@ Userscript para o Erome com painel lateral moderno para selecionar mídias, baix
 
 ## Estrutura
 
-- `eromewithtelegram.js`: userscript principal.
+- `erome-downloader.user.js`: userscript principal.
 - `README.md`: resumo e instruções de uso.
 
 ## Licença
