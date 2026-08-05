@@ -40,7 +40,7 @@
             botTokenLabel: 'Token do Bot',
             botTokenPlaceholder: '1234567890:AABBccDD...',
             saveToken: 'Salvar Token',
-            tokenPrivacy: 'O token é salvo localmente via GM_setValue e nunca enviado a terceiros.',
+            tokenPrivacy: 'O token é salvo localmente via GM_setValue e enviado apenas à API do Telegram.',
             languageLabel: 'Idioma',
             counter: (n) => `${n} selecionados`,
             loadingMedia: 'Carregando mídias...',
@@ -54,10 +54,12 @@
             selectAtLeastOne: 'Selecione pelo menos uma mídia para baixar.',
             selectAtLeastOneMedia: 'Selecione pelo menos uma mídia.',
             chatIdRequired: 'Digite um Chat ID válido.',
+            invalidChatId: 'Chat ID inválido. Use um ID numérico ou @username válido.',
             tokenRequired: 'Token não pode ser vazio.',
+            invalidToken: 'Token do Bot inválido.',
             chatIdSaved: 'Chat ID salvo!',
             chatIdConverted: (id) => ` (convertido para ${id})`,
-            tokenSaved: 'Token salvo com segurança!',
+            tokenSaved: 'Token salvo localmente!',
             testingWith: (id) => `Testando com Chat ID: ${id}...`,
             connectionSuccess: (id) => `Conexão bem-sucedida! (ID: ${id})`,
             connectionError: (desc, id) => `Erro: ${desc} (ID usado: ${id})`,
@@ -65,6 +67,7 @@
             networkError: 'Falha de rede ao conectar com o Telegram.',
             downloadStarted: (name) => `Download iniciado: ${name}`,
             filesDownloaded: (n) => `${n} arquivo(s) enviado(s) para download!`,
+            downloadFallbackStarted: (name) => `Fallback iniciado no navegador: ${name}`,
             sendingFile: (name) => `Enviando ${name}...`,
             sent: (name) => `Enviado: ${name}`,
             sendError: (msg) => `Erro ao enviar: ${msg}`,
@@ -75,6 +78,7 @@
             sendingGroup: (cur, total) => `Enviando grupo ${cur}/${total}...`,
             allSent: (n, groups) => `${n} arquivo(s) enviado(s) com sucesso em ${groups} grupo(s)!`,
             partialSent: (ok, err) => `${ok} enviado(s), ${err} erro(s). Veja o console (F12).`,
+            filesDownloadResult: (ok, fallback, err) => `${ok} concluído(s), ${fallback} fallback(s) iniciado(s), ${err} erro(s).`,
             groupError: (num, msg) => `Erro no grupo ${num}: ${msg}`,
             groupDownloadError: (num, error) => `Erro ao baixar grupo ${num}: ${error}`,
             sendSuccess: 'Enviado com sucesso',
@@ -92,6 +96,7 @@
             nonOkHttpStatus: (status) => `Download falhou (HTTP ${status})`,
             parseError: 'Falha ao parsear resposta do Telegram',
             uploadNetworkError: 'Erro de rede no upload',
+            requestTimeout: 'A requisição excedeu o tempo limite.',
         },
         'en-US': {
             title: 'Download Manager',
@@ -110,7 +115,7 @@
             botTokenLabel: 'Bot Token',
             botTokenPlaceholder: '1234567890:AABBccDD...',
             saveToken: 'Save Token',
-            tokenPrivacy: 'The token is saved locally via GM_setValue and never sent to third parties.',
+            tokenPrivacy: 'The token is saved locally via GM_setValue and sent only to the Telegram API.',
             languageLabel: 'Language',
             counter: (n) => `${n} selected`,
             loadingMedia: 'Loading media...',
@@ -124,10 +129,12 @@
             selectAtLeastOne: 'Select at least one media to download.',
             selectAtLeastOneMedia: 'Select at least one media.',
             chatIdRequired: 'Enter a valid Chat ID.',
+            invalidChatId: 'Invalid Chat ID. Use a numeric ID or a valid @username.',
             tokenRequired: 'Token cannot be empty.',
+            invalidToken: 'Invalid Bot Token.',
             chatIdSaved: 'Chat ID saved!',
             chatIdConverted: (id) => ` (converted to ${id})`,
-            tokenSaved: 'Token saved successfully!',
+            tokenSaved: 'Token saved locally!',
             testingWith: (id) => `Testing with Chat ID: ${id}...`,
             connectionSuccess: (id) => `Connection successful! (ID: ${id})`,
             connectionError: (desc, id) => `Error: ${desc} (ID used: ${id})`,
@@ -135,6 +142,7 @@
             networkError: 'Network error connecting to Telegram.',
             downloadStarted: (name) => `Download started: ${name}`,
             filesDownloaded: (n) => `${n} file(s) sent for download!`,
+            downloadFallbackStarted: (name) => `Browser fallback started: ${name}`,
             sendingFile: (name) => `Sending ${name}...`,
             sent: (name) => `Sent: ${name}`,
             sendError: (msg) => `Error sending: ${msg}`,
@@ -145,6 +153,7 @@
             sendingGroup: (cur, total) => `Sending group ${cur}/${total}...`,
             allSent: (n, groups) => `${n} file(s) sent successfully in ${groups} group(s)!`,
             partialSent: (ok, err) => `${ok} sent, ${err} error(s). Check console (F12).`,
+            filesDownloadResult: (ok, fallback, err) => `${ok} completed, ${fallback} fallback(s) started, ${err} error(s).`,
             groupError: (num, msg) => `Error in group ${num}: ${msg}`,
             groupDownloadError: (num, error) => `Error downloading group ${num}: ${error}`,
             sendSuccess: 'Sent successfully',
@@ -162,6 +171,7 @@
             nonOkHttpStatus: (status) => `Download failed (HTTP ${status})`,
             parseError: 'Failed to parse Telegram response',
             uploadNetworkError: 'Network error on upload',
+            requestTimeout: 'The request timed out.',
         },
         'es': {
             title: 'Gestor de Descargas',
@@ -180,7 +190,7 @@
             botTokenLabel: 'Token del Bot',
             botTokenPlaceholder: '1234567890:AABBccDD...',
             saveToken: 'Guardar Token',
-            tokenPrivacy: 'El token se guarda localmente vía GM_setValue y nunca se envía a terceros.',
+            tokenPrivacy: 'El token se guarda localmente vía GM_setValue y solo se envía a la API de Telegram.',
             languageLabel: 'Idioma',
             counter: (n) => `${n} seleccionados`,
             loadingMedia: 'Cargando medios...',
@@ -194,10 +204,12 @@
             selectAtLeastOne: 'Seleccione al menos un medio para descargar.',
             selectAtLeastOneMedia: 'Seleccione al menos un medio.',
             chatIdRequired: 'Ingrese un Chat ID válido.',
+            invalidChatId: 'Chat ID inválido. Use un ID numérico o @username válido.',
             tokenRequired: 'El Token no puede estar vacío.',
+            invalidToken: 'Token del Bot inválido.',
             chatIdSaved: '¡Chat ID guardado!',
             chatIdConverted: (id) => ` (convertido a ${id})`,
-            tokenSaved: '¡Token guardado con éxito!',
+            tokenSaved: '¡Token guardado localmente!',
             testingWith: (id) => `Probando con Chat ID: ${id}...`,
             connectionSuccess: (id) => `¡Conexión exitosa! (ID: ${id})`,
             connectionError: (desc, id) => `Error: ${desc} (ID usado: ${id})`,
@@ -205,6 +217,7 @@
             networkError: 'Error de red al conectar con Telegram.',
             downloadStarted: (name) => `Descarga iniciada: ${name}`,
             filesDownloaded: (n) => `¡${n} archivo(s) enviado(s) para descarga!`,
+            downloadFallbackStarted: (name) => `Fallback iniciado en el navegador: ${name}`,
             sendingFile: (name) => `Enviando ${name}...`,
             sent: (name) => `Enviado: ${name}`,
             sendError: (msg) => `Error al enviar: ${msg}`,
@@ -215,6 +228,7 @@
             sendingGroup: (cur, total) => `Enviando grupo ${cur}/${total}...`,
             allSent: (n, groups) => `¡${n} archivo(s) enviado(s) con éxito en ${groups} grupo(s)!`,
             partialSent: (ok, err) => `${ok} enviado(s), ${err} error(es). Vea la consola (F12).`,
+            filesDownloadResult: (ok, fallback, err) => `${ok} completada(s), ${fallback} fallback(s) iniciado(s), ${err} error(es).`,
             groupError: (num, msg) => `Error en grupo ${num}: ${msg}`,
             groupDownloadError: (num, error) => `Error al descargar grupo ${num}: ${error}`,
             sendSuccess: 'Enviado con éxito',
@@ -232,6 +246,7 @@
             nonOkHttpStatus: (status) => `Descarga fallida (HTTP ${status})`,
             parseError: 'Error al procesar respuesta de Telegram',
             uploadNetworkError: 'Error de red en la subida',
+            requestTimeout: 'La solicitud excedió el tiempo límite.',
         }
     };
 
@@ -256,6 +271,8 @@
     };
 
     const MAX_CONCURRENT_DOWNLOADS = 3;
+    const MEDIA_DOWNLOAD_TIMEOUT = 60000;
+    const TELEGRAM_REQUEST_TIMEOUT = 120000;
     let mediaItems = [];
     let selectedItems = new Set();
 
@@ -263,10 +280,17 @@
         const str = String(id).trim();
         if (!str) return str;
         if (str.startsWith('@')) return str;
+        if (!/^-?\d+$/.test(str)) return str;
         if (!str.startsWith('-')) return str;
         const digits = str.replace(/^-/, '');
         if (digits.startsWith('100')) return str;
         return `-100${digits}`;
+    };
+
+    const isValidToken = (token) => /^\d+:[A-Za-z0-9_-]+$/.test(String(token).trim());
+    const isValidChatId = (id) => {
+        const value = String(id).trim();
+        return /^-?\d+$/.test(value) || /^@[A-Za-z0-9_]{5,32}$/.test(value);
     };
 
     const injectStyles = () => {
@@ -378,6 +402,8 @@
             }
             .erome-chat-tag:hover { border-color: ${COLORS.border}; }
             .erome-chat-tag-remove {
+                background: transparent;
+                border: 0;
                 color: ${COLORS.textSecondary};
                 font-size: 18px;
                 font-weight: 300;
@@ -619,7 +645,19 @@
         document.body.appendChild(trigger);
     };
 
-    const getChatHistory = () => JSON.parse(GM_getValue('tg_chat_history', '[]'));
+    const getChatHistory = () => {
+        try {
+            const stored = GM_getValue('tg_chat_history', '[]');
+            const parsed = typeof stored === 'string' ? JSON.parse(stored) : stored;
+            if (!Array.isArray(parsed)) return [];
+            return parsed
+                .filter(chat => chat && typeof chat.id === 'string' && typeof chat.label === 'string')
+                .slice(0, 10);
+        } catch (error) {
+            console.warn('[Erome Downloader] Invalid chat history:', error);
+            return [];
+        }
+    };
 
     const saveChatToHistory = (id, label) => {
         const history = getChatHistory();
@@ -642,13 +680,20 @@
         getChatHistory().forEach(chat => {
             const tag = document.createElement('span');
             tag.className = 'erome-chat-tag';
-            tag.innerHTML = `<span>${chat.label}</span><span class="erome-chat-tag-remove" data-id="${chat.id}">×</span>`;
-            tag.querySelector('span:first-child').onclick = () => {
+            const label = document.createElement('span');
+            label.textContent = chat.label;
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'erome-chat-tag-remove';
+            remove.textContent = '×';
+            remove.setAttribute('aria-label', 'Remove chat');
+            tag.append(label, remove);
+            label.onclick = () => {
                 document.getElementById('erome-chat-id-input').value = chat.id;
                 TELEGRAM_CHAT_ID = chat.id;
                 GM_setValue('tg_chat_id', chat.id);
             };
-            tag.querySelector('.erome-chat-tag-remove').onclick = (e) => {
+            remove.onclick = (e) => {
                 e.stopPropagation();
                 removeChatFromHistory(chat.id);
             };
@@ -693,8 +738,7 @@
                         <div class="erome-input-group">
                             <label class="erome-input-label" id="label-chat-id">${t('chatIdLabel')}</label>
                             <input id="erome-chat-id-input" class="erome-input"
-                                   placeholder="${t('chatIdPlaceholder')}"
-                                   value="${TELEGRAM_CHAT_ID}" />
+                               placeholder="${t('chatIdPlaceholder')}" />
                         </div>
                         <button class="erome-btn erome-btn-telegram" id="erome-save-chat-id">${t('save')}</button>
                     </div>
@@ -725,8 +769,7 @@
                     <div class="erome-input-group">
                         <label class="erome-input-label" id="label-bot-token">${t('botTokenLabel')}</label>
                         <input id="erome-bot-token-input" class="erome-input" type="password"
-                               placeholder="${t('botTokenPlaceholder')}"
-                               value="${TELEGRAM_BOT_TOKEN}" />
+                               placeholder="${t('botTokenPlaceholder')}" />
                     </div>
                     <button class="erome-btn erome-btn-primary" id="erome-save-token">${t('saveToken')}</button>
                     <p id="p-token-privacy" style="font-size:11px;color:${COLORS.textSecondary};margin:0;">
@@ -745,6 +788,9 @@
 
         overlay.appendChild(modal);
         document.body.appendChild(overlay);
+
+        document.getElementById('erome-chat-id-input').value = TELEGRAM_CHAT_ID;
+        document.getElementById('erome-bot-token-input').value = TELEGRAM_BOT_TOKEN;
 
         document.getElementById('erome-modal-close').onclick = closeModal;
 
@@ -765,6 +811,10 @@
             const val = document.getElementById('erome-chat-id-input').value.trim();
             if (!val) { showNotification(t('chatIdRequired'), 'error', 3000); return; }
             const normalized = normalizeChatId(val);
+            if (!isValidChatId(normalized)) {
+                showNotification(t('invalidChatId'), 'error', 3000);
+                return;
+            }
             TELEGRAM_CHAT_ID = normalized;
             GM_setValue('tg_chat_id', normalized);
             saveChatToHistory(normalized, val);
@@ -778,6 +828,10 @@
         document.getElementById('erome-save-token').onclick = () => {
             const val = document.getElementById('erome-bot-token-input').value.trim();
             if (!val) { showNotification(t('tokenRequired'), 'error', 3000); return; }
+            if (!isValidToken(val)) {
+                showNotification(t('invalidToken'), 'error', 3000);
+                return;
+            }
             TELEGRAM_BOT_TOKEN = val;
             GM_setValue('tg_bot_token', val);
             showNotification(t('tokenSaved'), 'success', 2500);
@@ -806,10 +860,13 @@
     const showToast = (title, message, type = 'info', duration = 4000) => {
         const toast = document.createElement('div');
         toast.className = `erome-toast ${type}`;
-        toast.innerHTML = `
-            <div class="erome-toast-title">${title}</div>
-            <div class="erome-toast-message">${message}</div>
-        `;
+        const titleEl = document.createElement('div');
+        titleEl.className = 'erome-toast-title';
+        titleEl.textContent = String(title);
+        const messageEl = document.createElement('div');
+        messageEl.className = 'erome-toast-message';
+        messageEl.textContent = String(message);
+        toast.append(titleEl, messageEl);
 
         document.body.appendChild(toast);
 
@@ -833,19 +890,40 @@
         if (done >= total) setTimeout(() => wrap.classList.remove('visible'), 800);
     };
 
+    const toAbsoluteUrl = (value) => {
+        if (!value) return '';
+        try {
+            return new URL(value, location.href).href;
+        } catch {
+            return value;
+        }
+    };
+
+    const getMediaSource = (media) => {
+        // Prefer loaded media URL; lazy attributes may still point to thumbnails.
+        if (media.tagName === 'IMG') {
+            return toAbsoluteUrl(media.currentSrc
+                || media.getAttribute('src')
+                || media.getAttribute('data-src')
+                || media.getAttribute('data-original')
+                || '');
+        }
+
+        const source = media.querySelector('source');
+        return toAbsoluteUrl(media.currentSrc
+            || (source && (source.currentSrc || source.getAttribute('src') || source.src))
+            || media.getAttribute('data-src')
+            || media.getAttribute('src')
+            || '');
+    };
+
     const collectMedia = () => {
         mediaItems = [];
         const seenUrls = new Set();
         const mediaElements = document.querySelectorAll('.media-group .video video, .media-group .img img');
 
         mediaElements.forEach((media) => {
-            let src = '';
-            if (media.tagName === 'IMG') {
-                src = media.src || media.getAttribute('data-src') || '';
-            } else {
-                const source = media.querySelector('source');
-                src = (source ? source.src : media.src) || '';
-            }
+            const src = getMediaSource(media);
             if (!src || seenUrls.has(src)) return;
             seenUrls.add(src);
 
@@ -857,8 +935,10 @@
                 originalFileName = src.split('/').pop().split('?')[0];
             }
 
-            mediaItems.push({ id: mediaItems.length, type: media.tagName, src, element: media, originalFileName });
+            mediaItems.push({ id: src, type: media.tagName, src, element: media, originalFileName });
         });
+        const currentIds = new Set(mediaItems.map(item => item.id));
+        selectedItems = new Set([...selectedItems].filter(id => currentIds.has(id)));
         return mediaItems;
     };
 
@@ -874,13 +954,7 @@
 
             if (!mediaElement) return;
 
-            let src = '';
-            if (img) {
-                src = img.src || img.getAttribute('data-src') || '';
-            } else if (video) {
-                const source = video.querySelector('source');
-                src = (source ? source.src : video.src) || '';
-            }
+            const src = getMediaSource(mediaElement);
 
             if (!src) return;
 
@@ -923,41 +997,108 @@
         });
     };
 
+    const getDownloadErrorMessage = (reason) => {
+        if (typeof reason === 'string' && reason) return reason;
+        if (reason && typeof reason.message === 'string' && reason.message) return reason.message;
+        return t('downloadBlobError');
+    };
+
+    const tryBrowserDownload = (url, fileName, target = '_self') => {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        link.target = target;
+        link.rel = 'noopener';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+    };
+
+    const startDownload = (url, fileName, onSuccess, onFailure, target = '_self') => {
+        let settled = false;
+        const fail = (reason) => {
+            if (settled) return;
+            settled = true;
+            let fallbackStarted = false;
+            // Browser fallback is best effort and never counts as confirmed success.
+            try {
+                tryBrowserDownload(url, fileName, target);
+                fallbackStarted = true;
+            } catch (fallbackError) {
+                console.error('[Erome Downloader] Browser fallback failed:', fallbackError);
+            }
+            onFailure(getDownloadErrorMessage(reason), fallbackStarted);
+        };
+
+        try {
+            GM_download({
+                url,
+                name: fileName,
+                saveAs: false,
+                timeout: MEDIA_DOWNLOAD_TIMEOUT,
+                onload: () => {
+                    if (settled) return;
+                    settled = true;
+                    onSuccess();
+                },
+                onerror: fail,
+                onabort: () => fail('Download aborted'),
+                ontimeout: () => fail(t('requestTimeout'))
+            });
+        } catch (error) {
+            fail(error);
+        }
+    };
+
     const downloadSingleInline = (item, btnElement) => {
         btnElement.disabled = true;
         btnElement.classList.add('loading');
 
         const fileName = getFileName(item.src, item, item.id + 1);
 
-        GM_download({
-            url: item.src,
-            name: fileName,
-            saveAs: false,
-            onload: () => {
+        startDownload(
+            item.src,
+            fileName,
+            () => {
                 btnElement.disabled = false;
                 btnElement.classList.remove('loading');
-                btnElement.innerHTML = t('downloadBtnDone');
-                setTimeout(() => {
-                    btnElement.innerHTML = t('downloadBtn');
-                }, 2000);
+                btnElement.textContent = t('downloadBtnDone');
+                setTimeout(() => { btnElement.textContent = t('downloadBtn'); }, 2000);
             },
-            onerror: () => {
-                const a = document.createElement('a');
-                a.href = item.src;
-                a.download = fileName;
-                a.target = '_blank';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-
+            (error, fallbackStarted) => {
                 btnElement.disabled = false;
                 btnElement.classList.remove('loading');
-                btnElement.innerHTML = t('downloadBtnDone');
-                setTimeout(() => {
-                    btnElement.innerHTML = t('downloadBtn');
-                }, 2000);
-            }
-        });
+                btnElement.textContent = fallbackStarted ? t('downloadBtn') : t('downloadBtnFail');
+                showToast(
+                    fallbackStarted ? t('inlineDownloadTitle') : t('downloadErrorTitle'),
+                    fallbackStarted ? t('downloadFallbackStarted', fileName) : t('downloadError', error),
+                    fallbackStarted ? 'info' : 'error',
+                    4000
+                );
+                setTimeout(() => { btnElement.textContent = t('downloadBtn'); }, 3000);
+            },
+            '_blank'
+        );
+    };
+
+    const createTelegramFile = (blob, item, fileName) => {
+        const fallbackType = item.type === 'IMG' ? 'image/jpeg' : 'video/mp4';
+        const extension = fileName.split('.').pop().toLowerCase();
+        const extensionTypes = {
+            gif: 'image/gif',
+            jpeg: 'image/jpeg',
+            jpg: 'image/jpeg',
+            mov: 'video/quicktime',
+            mp4: 'video/mp4',
+            png: 'image/png',
+            webm: 'video/webm',
+            webp: 'image/webp'
+        };
+        const blobType = typeof blob.type === 'string' ? blob.type : '';
+        const mimeType = /^(image|video)\//.test(blobType)
+            ? blobType
+            : (extensionTypes[extension] || fallbackType);
+        return new File([blob], fileName, { type: mimeType });
     };
 
     const sendSingleToTelegramInline = (item, btnElement) => {
@@ -973,6 +1114,10 @@
             );
             return;
         }
+        if (!isValidToken(token)) {
+            showToast(t('configNeeded'), t('invalidToken'), 'error', 5000);
+            return;
+        }
         if (!chatId) {
             showToast(
                 t('configNeeded'),
@@ -980,6 +1125,10 @@
                 'error',
                 5000
             );
+            return;
+        }
+        if (!isValidChatId(chatId)) {
+            showToast(t('configNeeded'), t('invalidChatId'), 'error', 5000);
             return;
         }
 
@@ -991,17 +1140,12 @@
         downloadBlob(
             item.src,
             (blob) => {
-                const mimeType = item.type !== 'IMG' ? 'video/mp4' : 'image/jpeg';
-                const file = new File([blob], fileName, { type: mimeType });
+                const file = createTelegramFile(blob, item, fileName);
 
-                sendMediaGroup(
+                sendSingleMedia(
                     token,
                     chatId,
-                    [{
-                        type: item.type,
-                        blob: file,
-                        fileName: fileName
-                    }],
+                    { type: item.type, blob: file, fileName },
                     () => {
                         btnElement.disabled = false;
                         btnElement.classList.remove('loading');
@@ -1059,22 +1203,33 @@
                     <h3 style="color:${COLORS.text};margin-bottom:10px;">${t('noMediaFound')}</h3>
                     <p>${t('noMediaFoundDesc')}</p>
                 </div>`;
+            updateCounter();
             return;
         }
         content.innerHTML = '';
-        mediaItems.forEach(item => {
+        mediaItems.forEach((item, index) => {
             const itemDiv = document.createElement('div');
             itemDiv.className = 'erome-media-item' + (selectedItems.has(item.id) ? ' selected' : '');
             const preview = item.type === 'IMG' ? item.src : (item.element.poster || item.src);
-            const fileName = getFileName(item.src, item, item.id);
+            const fileName = getFileName(item.src, item, index + 1);
 
-            itemDiv.innerHTML = `
-                <div class="erome-checkbox"></div>
-                <img src="${preview}" class="erome-media-preview" alt="${t('previewAlt')}" loading="lazy">
-                <div class="erome-media-info">
-                    <span class="erome-media-type">${item.type === 'IMG' ? 'IMG' : 'VID'}</span>
-                    <div class="erome-media-url">${fileName}</div>
-                </div>`;
+            const checkbox = document.createElement('div');
+            checkbox.className = 'erome-checkbox';
+            const previewEl = document.createElement('img');
+            previewEl.className = 'erome-media-preview';
+            previewEl.alt = t('previewAlt');
+            previewEl.loading = 'lazy';
+            previewEl.src = preview;
+            const info = document.createElement('div');
+            info.className = 'erome-media-info';
+            const type = document.createElement('span');
+            type.className = 'erome-media-type';
+            type.textContent = item.type === 'IMG' ? 'IMG' : 'VID';
+            const fileNameEl = document.createElement('div');
+            fileNameEl.className = 'erome-media-url';
+            fileNameEl.textContent = fileName;
+            info.append(type, fileNameEl);
+            itemDiv.append(checkbox, previewEl, info);
 
             itemDiv.onclick = () => toggleSelection(item.id);
 
@@ -1091,90 +1246,6 @@
         if (el) el.textContent = t('counter', selectedItems.size);
     };
 
-    const downloadSingle = (item, btnElement) => {
-        btnElement.disabled = true;
-        btnElement.classList.add('loading');
-
-        const fileName = getFileName(item.src, item, item.id + 1);
-
-        GM_download({
-            url: item.src,
-            name: fileName,
-            saveAs: false,
-            onload: () => {
-                btnElement.disabled = false;
-                btnElement.classList.remove('loading');
-                showNotification(t('downloadStarted', fileName), 'success', 2500);
-            },
-            onerror: () => {
-                const a = document.createElement('a');
-                a.href = item.src;
-                a.download = fileName;
-                a.target = '_self';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-
-                btnElement.disabled = false;
-                btnElement.classList.remove('loading');
-                showNotification(t('downloadStarted', fileName), 'success', 2500);
-            }
-        });
-    };
-
-    const sendSingleToTelegram = (item, btnElement) => {
-        const rawId = document.getElementById('erome-chat-id-input').value.trim() || TELEGRAM_CHAT_ID;
-        const chatId = normalizeChatId(rawId);
-        const token = TELEGRAM_BOT_TOKEN;
-
-        if (!token) {
-            showNotification(t('errorConfigToken'), 'error', 4000);
-            return;
-        }
-        if (!chatId) {
-            showNotification(t('errorConfigChatId'), 'error', 4000);
-            return;
-        }
-
-        btnElement.disabled = true;
-        btnElement.classList.add('loading');
-
-        const fileName = getFileName(item.src, item, item.id + 1);
-        showNotification(t('sendingFile', fileName), 'info');
-
-        downloadBlob(
-            item.src,
-            (blob) => {
-                const mimeType = item.type !== 'IMG' ? 'video/mp4' : 'image/jpeg';
-                const file = new File([blob], fileName, { type: mimeType });
-
-                sendMediaGroup(
-                    token,
-                    chatId,
-                    [{
-                        type: item.type,
-                        blob: file,
-                        fileName: fileName
-                    }],
-                    () => {
-                        btnElement.disabled = false;
-                        btnElement.classList.remove('loading');
-                        showNotification(t('sent', fileName), 'success', 3000);
-                    },
-                    (errMsg) => {
-                        btnElement.disabled = false;
-                        btnElement.classList.remove('loading');
-                        showNotification(t('sendError', errMsg), 'error', 4000);
-                    }
-                );
-            },
-            (error) => {
-                btnElement.disabled = false;
-                btnElement.classList.remove('loading');
-                showNotification(t('downloadError', error), 'error', 4000);
-            }
-        );
-    };
     const downloadSelected = () => {
         if (selectedItems.size === 0) {
             showNotification(t('selectAtLeastOne'), 'error', 3000);
@@ -1183,39 +1254,53 @@
         const btn = document.getElementById('erome-download-selected');
         const selectedMedia = mediaItems.filter(i => selectedItems.has(i.id));
         const total = selectedMedia.length;
+        if (total === 0) {
+            selectedItems.clear();
+            updateCounter();
+            showNotification(t('selectAtLeastOne'), 'error', 3000);
+            return;
+        }
         let done = 0;
+        let errors = 0;
+        let fallbacks = 0;
 
         btn.disabled = true;
         setProgress(0, total);
 
-        const onFinish = () => {
+        const onFinish = (status) => {
             done++;
+            if (status === 'error') errors++;
+            if (status === 'fallback') fallbacks++;
             setProgress(done, total);
             if (done === total) {
                 btn.disabled = false;
                 btn.classList.remove('erome-btn-loading');
                 btn.textContent = '⬇ ' + t('downloadSelected');
-                showNotification(t('filesDownloaded', total), 'success', 4000);
+                const message = errors === 0 && fallbacks === 0
+                    ? t('filesDownloaded', total)
+                    : t('filesDownloadResult', total - errors - fallbacks, fallbacks, errors);
+                showNotification(message, errors > 0 ? 'error' : (fallbacks > 0 ? 'info' : 'success'), 5000);
             }
         };
 
         let index = 0, active = 0;
+        btn.classList.add('erome-btn-loading');
         const next = () => {
             while (active < MAX_CONCURRENT_DOWNLOADS && index < total) {
                 const item = selectedMedia[index++];
                 active++;
-                btn.classList.add('erome-btn-loading');
                 const fileName = getFileName(item.src, item, index);
-                GM_download({
-                    url: item.src, name: fileName, saveAs: false,
-                    onload: () => { active--; onFinish(); next(); },
-                    onerror: () => {
-                        const a = document.createElement('a');
-                        a.href = item.src; a.download = fileName; a.target = '_self';
-                        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-                        active--; onFinish(); next();
+                startDownload(
+                    item.src,
+                    fileName,
+                    () => { active--; onFinish('success'); next(); },
+                    (error, fallbackStarted) => {
+                        if (!fallbackStarted) console.error('[Download] Error:', error);
+                        active--;
+                        onFinish(fallbackStarted ? 'fallback' : 'error');
+                        next();
                     }
-                });
+                );
             }
         };
         next();
@@ -1227,94 +1312,235 @@
         const token = TELEGRAM_BOT_TOKEN;
 
         if (!token) { showNotification(t('errorConfigToken'), 'error', 4000); return; }
+        if (!isValidToken(token)) { showNotification(t('invalidToken'), 'error', 4000); return; }
         if (!chatId) { showNotification(t('errorConfigChatId'), 'error', 4000); return; }
+        if (!isValidChatId(chatId)) { showNotification(t('invalidChatId'), 'error', 4000); return; }
 
         showNotification(t('testingWith', chatId), 'info');
 
-        GM_xmlhttpRequest({
-            method: 'POST',
-            url: `https://api.telegram.org/bot${token}/sendMessage`,
-            headers: { 'Content-Type': 'application/json' },
-            data: JSON.stringify({ chat_id: chatId, text: t('tgConnected') }),
-            onload: (res) => {
-                try {
-                    const json = JSON.parse(res.responseText);
-                    if (json.ok) {
-                        showNotification(t('connectionSuccess', chatId), 'success', 5000);
-                    } else {
-                        showNotification(t('connectionError', json.description, chatId), 'error', 8000);
-                    }
-                } catch { showNotification(t('invalidApiResponse'), 'error', 4000); }
-            },
-            onerror: () => showNotification(t('networkError'), 'error', 4000)
-        });
+        try {
+            const { done, fail } = createSettledCallbacks(
+                () => showNotification(t('connectionSuccess', chatId), 'success', 5000),
+                (message) => showNotification(message, 'error', 8000)
+            );
+            GM_xmlhttpRequest({
+                method: 'POST',
+                url: `https://api.telegram.org/bot${token}/sendMessage`,
+                headers: { 'Content-Type': 'application/json' },
+                data: JSON.stringify({ chat_id: chatId, text: t('tgConnected') }),
+                timeout: TELEGRAM_REQUEST_TIMEOUT,
+                onload: (res) => {
+                    try {
+                        const json = JSON.parse(res.responseText);
+                        if (json.ok) {
+                            done();
+                        } else {
+                            fail(t('connectionError', json.description, chatId));
+                        }
+                    } catch { fail(t('invalidApiResponse')); }
+                },
+                onerror: () => fail(t('networkError')),
+                ontimeout: () => fail(t('requestTimeout'))
+            });
+        } catch (error) {
+            showNotification(t('networkError'), 'error', 4000);
+            console.error('[TG] Connection test failed:', error);
+        }
     };
 
     const downloadBlob = (url, onSuccess, onError) => {
-        GM_xmlhttpRequest({
-            method: 'GET',
-            url: url,
-            responseType: 'blob',
-            anonymous: false,
-            headers: {
-                'Referer': 'https://www.erome.com/',
-                'Origin': 'https://www.erome.com'
+        let settled = false;
+        const fail = (message) => {
+            if (settled) return;
+            settled = true;
+            onError(message);
+        };
+
+        try {
+            GM_xmlhttpRequest({
+                method: 'GET',
+                url,
+                responseType: 'blob',
+                anonymous: false,
+                timeout: MEDIA_DOWNLOAD_TIMEOUT,
+                headers: {
+                    'Referer': 'https://www.erome.com/',
+                    'Origin': 'https://www.erome.com'
+                },
+                onload: (res) => {
+                    if (settled) return;
+                    if (!res.response || res.status < 200 || res.status >= 300) {
+                        fail(t('nonOkHttpStatus', res.status));
+                        return;
+                    }
+                    settled = true;
+                    onSuccess(res.response);
+                },
+                onerror: (error) => {
+                    console.error('[TG] Download failed:', error);
+                    fail(t('downloadBlobError'));
+                },
+                ontimeout: () => fail(t('requestTimeout')),
+                onabort: () => fail(t('downloadBlobError'))
+            });
+        } catch (error) {
+            console.error('[TG] Download request failed:', error);
+            fail(getDownloadErrorMessage(error));
+        }
+    };
+
+    const createSettledCallbacks = (onDone, onError) => {
+        // Ignore late success/error events after timeout, abort, or network failure.
+        let settled = false;
+        return {
+            done: (...args) => {
+                if (settled) return;
+                settled = true;
+                onDone(...args);
             },
-            onload: (res) => {
-                if (!res.response || res.status < 200 || res.status >= 300) {
-                    onError(t('nonOkHttpStatus', res.status));
-                    return;
-                }
-                onSuccess(res.response);
-            },
-            onerror: (e) => {
-                console.error('[TG] Download failed:', e);
-                onError(t('downloadBlobError'));
+            fail: (...args) => {
+                if (settled) return;
+                settled = true;
+                onError(...args);
             }
-        });
+        };
+    };
+
+    const getTelegramUpload = (item) => {
+        // Telegram albums accept only photo/video; unsupported formats use documents.
+        const fileName = item.fileName || item.originalFileName || '';
+        const extension = fileName.split('.').pop().toLowerCase();
+        const mimeType = item.blob && typeof item.blob.type === 'string'
+            ? item.blob.type.toLowerCase()
+            : '';
+
+        const isPhoto = item.type === 'IMG'
+            && (mimeType === 'image/jpeg' || mimeType === 'image/png'
+                || (!mimeType && (!fileName.includes('.') || ['jpg', 'jpeg', 'png'].includes(extension))));
+        if (isPhoto) return { method: 'sendPhoto', field: 'photo', albumType: 'photo' };
+
+        const isVideo = item.type !== 'IMG'
+            && (mimeType === 'video/mp4'
+                || (!mimeType && (!fileName.includes('.') || extension === 'mp4')));
+        if (isVideo) return { method: 'sendVideo', field: 'video', albumType: 'video' };
+
+        return { method: 'sendDocument', field: 'document', albumType: null };
+    };
+
+    const handleTelegramResponse = (res, onDone, onError) => {
+        try {
+            const json = JSON.parse(res.responseText);
+            if (json.ok) {
+                onDone(json);
+            } else {
+                console.error('[TG] API error:', json.description);
+                onError(json.description || t('invalidApiResponse'));
+            }
+        } catch (error) {
+            console.error('[TG] Response parse error:', error);
+            onError(t('parseError'));
+        }
+    };
+
+    const sendSingleMedia = (token, chatId, item, onDone, onError) => {
+        const { done, fail } = createSettledCallbacks(onDone, onError);
+        const upload = getTelegramUpload(item);
+        const formData = new FormData();
+        formData.append('chat_id', String(chatId));
+        formData.append(upload.field, item.blob, item.fileName);
+
+        try {
+            GM_xmlhttpRequest({
+                method: 'POST',
+                url: `https://api.telegram.org/bot${token}/${upload.method}`,
+                data: formData,
+                timeout: TELEGRAM_REQUEST_TIMEOUT,
+                onload: (res) => handleTelegramResponse(res, done, fail),
+                onerror: () => fail(t('uploadNetworkError')),
+                ontimeout: () => fail(t('requestTimeout'))
+            });
+        } catch (error) {
+            fail(getDownloadErrorMessage(error));
+        }
     };
 
     const sendMediaGroup = (token, chatId, mediaGroup, onDone, onError) => {
+        if (mediaGroup.length < 2 || mediaGroup.length > 10
+            || mediaGroup.some(item => !getTelegramUpload(item).albumType)) {
+            onError(t('invalidApiResponse'));
+            return;
+        }
+        const { done, fail } = createSettledCallbacks(onDone, onError);
         const formData = new FormData();
         formData.append('chat_id', String(chatId));
 
         const mediaArray = mediaGroup.map((item, idx) => {
-            const isVideo = item.type !== 'IMG';
-            const mediaType = isVideo ? 'video' : 'photo';
             const attachName = `file${idx}`;
 
             formData.append(attachName, item.blob, item.fileName);
 
             return {
-                type: mediaType,
+                type: getTelegramUpload(item).albumType,
                 media: `attach://${attachName}`
             };
         });
 
         formData.append('media', JSON.stringify(mediaArray));
 
-        GM_xmlhttpRequest({
-            method: 'POST',
-            url: `https://api.telegram.org/bot${token}/sendMediaGroup`,
-            data: formData,
-            onload: (res) => {
-                try {
-                    const json = JSON.parse(res.responseText);
-                    if (json.ok) {
-                        onDone();
-                    } else {
-                        console.error('[TG] Group send error:', json.description);
-                        onError(json.description);
-                    }
-                } catch (e) {
-                    onError(t('parseError'));
-                }
-            },
-            onerror: (e) => {
-                console.error('[TG] Upload network error:', e);
-                onError(t('uploadNetworkError'));
+        try {
+            GM_xmlhttpRequest({
+                method: 'POST',
+                url: `https://api.telegram.org/bot${token}/sendMediaGroup`,
+                data: formData,
+                timeout: TELEGRAM_REQUEST_TIMEOUT,
+                onload: (res) => handleTelegramResponse(res, done, fail),
+                onerror: () => {
+                    console.error('[TG] Upload network error');
+                    fail(t('uploadNetworkError'));
+                },
+                ontimeout: () => fail(t('requestTimeout'))
+            });
+        } catch (error) {
+            fail(getDownloadErrorMessage(error));
+        }
+    };
+
+    const sendMediaBatch = (token, chatId, mediaGroup, onDone, onError) => {
+        if (mediaGroup.length === 1) {
+            sendSingleMedia(token, chatId, mediaGroup[0], onDone, onError);
+            return;
+        }
+
+        if (mediaGroup.every(item => getTelegramUpload(item).albumType)) {
+            sendMediaGroup(token, chatId, mediaGroup, onDone, onError);
+            return;
+        }
+
+        // Send incompatible album items sequentially instead of rejecting whole batch.
+        let index = 0;
+        let failures = 0;
+        const messages = [];
+        const next = () => {
+            if (index >= mediaGroup.length) {
+                if (failures === 0) onDone();
+                else onError(messages.join('; '), failures);
+                return;
             }
-        });
+
+            const item = mediaGroup[index++];
+            sendSingleMedia(
+                token,
+                chatId,
+                item,
+                next,
+                (message) => {
+                    failures++;
+                    messages.push(message);
+                    next();
+                }
+            );
+        };
+        next();
     };
 
     const sendToTelegram = () => {
@@ -1323,7 +1549,9 @@
         const token = TELEGRAM_BOT_TOKEN;
 
         if (!token) { showNotification(t('errorConfigToken'), 'error', 4000); return; }
+        if (!isValidToken(token)) { showNotification(t('invalidToken'), 'error', 4000); return; }
         if (!chatId) { showNotification(t('errorConfigChatId'), 'error', 4000); return; }
+        if (!isValidChatId(chatId)) { showNotification(t('invalidChatId'), 'error', 4000); return; }
         if (selectedItems.size === 0) { showNotification(t('selectAtLeastOneMedia'), 'error', 3000); return; }
 
         TELEGRAM_CHAT_ID = chatId;
@@ -1333,6 +1561,12 @@
         const btn = document.getElementById('erome-send-telegram');
         const selectedMedia = mediaItems.filter(i => selectedItems.has(i.id));
         const total = selectedMedia.length;
+        if (total === 0) {
+            selectedItems.clear();
+            updateCounter();
+            showNotification(t('selectAtLeastOneMedia'), 'error', 3000);
+            return;
+        }
         let done = 0, errors = 0;
 
         btn.disabled = true;
@@ -1365,54 +1599,72 @@
             showNotification(t('downloadingGroup', batchNum, batches.length, batch.length), 'info');
 
             const downloadPromises = batch.map((item, idx) => {
-                return new Promise((resolve, reject) => {
+                return new Promise((resolve) => {
                     downloadBlob(
                         item.src,
                         (blob) => {
-                            const fileName = getFileName(item.src, item, done + idx + 1);
-                            const mimeType = item.type !== 'IMG' ? 'video/mp4' : 'image/jpeg';
-                            resolve({
-                                type: item.type,
-                                blob: new File([blob], fileName, { type: mimeType }),
-                                fileName: fileName
-                            });
+                            try {
+                                const fileName = getFileName(item.src, item, done + idx + 1);
+                                resolve({
+                                    ok: true,
+                                    media: {
+                                        type: item.type,
+                                        blob: createTelegramFile(blob, item, fileName),
+                                        fileName
+                                    }
+                                });
+                            } catch (error) {
+                                resolve({ ok: false, error: getDownloadErrorMessage(error) });
+                            }
                         },
-                        (error) => reject(error)
+                        (error) => resolve({ ok: false, error })
                     );
                 });
             });
 
             Promise.all(downloadPromises)
-                .then((mediaGroup) => {
+                .then((results) => {
+                    const failedDownloads = results.filter(result => !result.ok);
+                    const mediaGroup = results
+                        .filter(result => result.ok)
+                        .map(result => result.media);
+
+                    if (failedDownloads.length > 0) {
+                        errors += failedDownloads.length;
+                        done += failedDownloads.length;
+                        setProgress(done, total);
+                        failedDownloads.forEach(result => console.error('[TG] Media download failed:', result.error));
+                    }
+
+                    if (mediaGroup.length === 0) {
+                        showNotification(
+                            t('groupDownloadError', batchNum, failedDownloads[0]?.error || t('downloadBlobError')),
+                            'error',
+                            5000
+                        );
+                        currentBatch++;
+                        setTimeout(() => processBatch(), 1000);
+                        return;
+                    }
+
                     showNotification(t('sendingGroup', batchNum, batches.length), 'info');
 
-                    sendMediaGroup(
-                        token,
-                        chatId,
-                        mediaGroup,
-                        () => {
-                            done += batch.length;
-                            setProgress(done, total);
-                            currentBatch++;
-                            setTimeout(() => processBatch(), 1000);
-                        },
-                        (errMsg) => {
-                            errors += batch.length;
-                            done += batch.length;
-                            setProgress(done, total);
-                            showNotification(t('groupError', batchNum, errMsg), 'error', 5000);
-                            currentBatch++;
-                            setTimeout(() => processBatch(), 1000);
-                        }
-                    );
-                })
-                .catch((error) => {
-                    errors += batch.length;
-                    done += batch.length;
-                    setProgress(done, total);
-                    showNotification(t('groupDownloadError', batchNum, error), 'error', 5000);
-                    currentBatch++;
-                    setTimeout(() => processBatch(), 1000);
+                    const onGroupDone = () => {
+                        done += mediaGroup.length;
+                        setProgress(done, total);
+                        currentBatch++;
+                        setTimeout(() => processBatch(), 1000);
+                    };
+                    const onGroupError = (errMsg, failedCount = mediaGroup.length) => {
+                        errors += failedCount;
+                        done += mediaGroup.length;
+                        setProgress(done, total);
+                        showNotification(t('groupError', batchNum, errMsg), 'error', 5000);
+                        currentBatch++;
+                        setTimeout(() => processBatch(), 1000);
+                    };
+
+                    sendMediaBatch(token, chatId, mediaGroup, onGroupDone, onGroupError);
                 });
         };
 
@@ -1509,8 +1761,28 @@
 
         addInlineButtons();
 
-        const observer = new MutationObserver(() => {
-            addInlineButtons();
+        let refreshTimer;
+        const observer = new MutationObserver((mutations) => {
+            const affectsMedia = mutations.some(mutation => [
+                ...mutation.addedNodes,
+                ...mutation.removedNodes
+            ].some(node => node.nodeType === Node.ELEMENT_NODE && (
+                node.matches('.media-group')
+                || node.closest('.media-group')
+                || node.querySelector('.media-group')
+            )));
+            if (!affectsMedia) return;
+
+            clearTimeout(refreshTimer);
+            // Debounce site mutations to avoid repeated scans during media loading.
+            refreshTimer = setTimeout(() => {
+                addInlineButtons();
+                const overlay = document.getElementById('erome-modal-overlay');
+                if (overlay && overlay.style.display !== 'none') {
+                    collectMedia();
+                    renderMediaList();
+                }
+            }, 150);
         });
 
         observer.observe(document.body, {

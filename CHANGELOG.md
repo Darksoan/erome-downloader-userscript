@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+
+- Send single media items through `sendPhoto` or `sendVideo` instead of invalid one-item media groups.
+- Preserve successful items when another download fails inside a Telegram batch.
+- Stop reporting failed `GM_download` calls as successful downloads.
+- Use response MIME types for Telegram uploads and add request timeouts.
+- Validate stored values, Chat IDs, Bot Tokens, and chat history before use.
+- Remove unsafe HTML interpolation from user-controlled media and chat history values.
+- Prevent late Telegram responses from completing a request after timeout handling.
+- Send GIF, WebP, WebM, MOV, and other unsupported album formats as documents.
+- Report browser download fallbacks separately from confirmed downloads and failures.
+- Prefer loaded `currentSrc` media over lazy-loading placeholder attributes.
+
 ## [4.2.0] - 2026-05-09
 
 ### Added

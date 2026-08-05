@@ -16,7 +16,7 @@ A userscript for Erome that adds a modern side panel to select media, download f
 - Lets you select media individually or in bulk.
 - Adds inline buttons to quickly download or send each media item to Telegram.
 - Stores recent Chat IDs locally for repeated use.
-- Uses `GM_setValue` only to store the bot token and Chat ID locally in your browser.
+- Stores bot token, Chat ID, language, and recent Chat IDs locally through `GM_setValue`.
 
 ## Requirements
 
@@ -65,7 +65,7 @@ A userscript for Erome that adds a modern side panel to select media, download f
 - To send media through Telegram, you need a Telegram bot and that bot's token.
 - Create the bot with BotFather using the `/newbot` command, then copy the generated token.
 - In Erome Downloader, open the `Config` tab, paste the token into `Token do Bot`, and click `Salvar Token`.
-- The token is stored locally by the userscript manager and is only used to call the Telegram API.
+- The token is stored locally by the userscript manager. It is sent only to the Telegram API when testing the connection or sending media.
 - `Chat ID`: enter the destination that should receive the media.
 - Private user: use the numeric ID directly, for example `123456789`.
 - Group or supergroup: use the full `-100` format, for example `-1001234567890`.
