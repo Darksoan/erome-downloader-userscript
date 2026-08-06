@@ -93,9 +93,11 @@
             inlineDownloadTitle: 'Download',
             inlineTelegramTitle: 'Enviar para Telegram',
             previewAlt: 'Preview',
+            downloadProgressAria: 'Progresso do download',
             nonOkHttpStatus: (status) => `Download falhou (HTTP ${status})`,
             parseError: 'Falha ao parsear resposta do Telegram',
             uploadNetworkError: 'Erro de rede no upload',
+            telegramFileTooLarge: (size) => `O arquivo tem ${size} MB; a API de bots do Telegram aceita até 50 MB.`,
             requestTimeout: 'A requisição excedeu o tempo limite.',
         },
         'en-US': {
@@ -168,9 +170,11 @@
             inlineDownloadTitle: 'Download',
             inlineTelegramTitle: 'Send to Telegram',
             previewAlt: 'Preview',
+            downloadProgressAria: 'Download progress',
             nonOkHttpStatus: (status) => `Download failed (HTTP ${status})`,
             parseError: 'Failed to parse Telegram response',
             uploadNetworkError: 'Network error on upload',
+            telegramFileTooLarge: (size) => `The file is ${size} MB; the Telegram Bot API accepts up to 50 MB.`,
             requestTimeout: 'The request timed out.',
         },
         'es': {
@@ -243,9 +247,11 @@
             inlineDownloadTitle: 'Descargar',
             inlineTelegramTitle: 'Enviar a Telegram',
             previewAlt: 'Vista previa',
+            downloadProgressAria: 'Progreso de descarga',
             nonOkHttpStatus: (status) => `Descarga fallida (HTTP ${status})`,
             parseError: 'Error al procesar respuesta de Telegram',
             uploadNetworkError: 'Error de red en la subida',
+            telegramFileTooLarge: (size) => `El archivo tiene ${size} MB; la API de bots de Telegram acepta hasta 50 MB.`,
             requestTimeout: 'La solicitud excedió el tiempo límite.',
         }
     };
@@ -271,8 +277,10 @@
     };
 
     const MAX_CONCURRENT_DOWNLOADS = 3;
-    const MEDIA_DOWNLOAD_TIMEOUT = 60000;
+    const MEDIA_METADATA_TIMEOUT = 15000;
+    const MEDIA_TRANSFER_TIMEOUT = 30 * 60 * 1000;
     const TELEGRAM_REQUEST_TIMEOUT = 120000;
+    const TELEGRAM_FILE_LIMIT_BYTES = 50 * 1000 * 1000;
     let mediaItems = [];
     let selectedItems = new Set();
 
@@ -310,7 +318,7 @@
                 position: fixed; top: 0; right: 0; height: 100vh;
                 background: ${COLORS.background};
                 border-left: 2px solid ${COLORS.primary};
-                width: 440px; max-width: 92vw;
+                width: 520px; max-width: 100vw;
                 display: flex; flex-direction: column;
                 animation: slideInRight 0.3s ease;
             }
@@ -417,14 +425,14 @@
                 color: ${COLORS.text};
             }
 
-            #erome-modal-content { padding: 16px; overflow-y: auto; flex: 1; }
+            #erome-modal-content { padding: 18px; overflow-y: auto; flex: 1; }
             #erome-modal-content::-webkit-scrollbar { width: 8px; }
             #erome-modal-content::-webkit-scrollbar-track { background: ${COLORS.background}; }
             #erome-modal-content::-webkit-scrollbar-thumb { background: ${COLORS.border}; border-radius: 4px; }
             #erome-modal-content::-webkit-scrollbar-thumb:hover { background: ${COLORS.primary}; }
 
             .erome-media-item {
-                display: flex; align-items: center; padding: 10px; margin-bottom: 8px;
+                display: flex; align-items: center; padding: 12px; margin-bottom: 10px;
                 background: ${COLORS.cardBg}; border: 1px solid ${COLORS.border};
                 border-radius: 4px; transition: all 0.2s ease; cursor: pointer;
             }
@@ -442,8 +450,9 @@
             .erome-media-item.selected .erome-checkbox::after { display: block; }
 
             .erome-media-preview {
-                width: 60px; height: 60px; object-fit: cover; border-radius: 3px;
-                margin-right: 10px; border: 1px solid ${COLORS.border}; background: ${COLORS.cardBg};
+                width: clamp(112px, 28vw, 150px); aspect-ratio: 3 / 2; object-fit: cover;
+                flex-shrink: 0; border-radius: 4px; margin-right: 12px;
+                border: 1px solid ${COLORS.border}; background: ${COLORS.cardBg};
             }
             .erome-media-info { flex: 1; min-width: 0; }
             .erome-media-type {
@@ -496,10 +505,26 @@
             #erome-notification.error   { background: #2e1a1a; border-color: #6b2e2e; color: ${COLORS.error}; display: block; }
 
             #erome-progress-bar-wrap {
-                display: none; height: 4px; background: ${COLORS.border}; border-radius: 2px; overflow: hidden;
+                display: none; position: relative; height: 24px; background: ${COLORS.cardBg};
+                border: 1px solid ${COLORS.border}; border-radius: 4px; overflow: hidden;
             }
             #erome-progress-bar-wrap.visible { display: block; }
-            #erome-progress-bar { height: 100%; background: ${COLORS.primary}; width: 0%; transition: width 0.3s ease; }
+            #erome-progress-bar {
+                position: absolute; inset: 0 auto 0 0; height: 100%; background: ${COLORS.primary};
+                width: 0%; transition: width 0.15s linear;
+            }
+            #erome-progress-bar.indeterminate {
+                width: 35% !important; animation: eromeProgressIndeterminate 1.1s ease-in-out infinite;
+            }
+            #erome-progress-label {
+                position: relative; z-index: 1; display: flex; align-items: center;
+                justify-content: center; height: 100%; color: ${COLORS.text}; font-size: 11px;
+                font-weight: 600; letter-spacing: 0.1px; text-shadow: 0 1px 2px #000;
+            }
+            @keyframes eromeProgressIndeterminate {
+                from { left: -35%; }
+                to { left: 100%; }
+            }
             .erome-divider { border: none; border-top: 1px solid ${COLORS.border}; margin: 4px 0; }
 
             /* Botões inline no site */
@@ -632,6 +657,16 @@
                 }
             }
 
+            @media (max-width: 560px) {
+                #erome-modal { width: 100vw; border-left: 0; }
+                #erome-modal-header { padding: 16px; }
+                #erome-modal-controls { padding: 12px 16px; }
+                #erome-modal-content { padding: 12px; }
+                .erome-media-item { padding: 10px; }
+                .erome-media-preview { width: 112px; margin-right: 10px; }
+                .erome-checkbox { margin-right: 10px; }
+            }
+
 
         `;
         document.head.appendChild(style);
@@ -717,7 +752,10 @@
 
             <div id="erome-modal-controls">
                 <div id="erome-notification"></div>
-                <div id="erome-progress-bar-wrap"><div id="erome-progress-bar"></div></div>
+                <div id="erome-progress-bar-wrap" role="progressbar" aria-label="${t('downloadProgressAria')}">
+                    <div id="erome-progress-bar"></div>
+                    <span id="erome-progress-label">0%</span>
+                </div>
 
                 <div class="erome-tabs">
                     <button class="erome-tab active" data-tab="download">${t('tabDownload')}</button>
@@ -880,14 +918,120 @@
         }, duration);
     };
 
-    const setProgress = (done, total) => {
+    let progressHideTimer;
+    let progressOperationId = 0;
+
+    const beginProgressOperation = () => ++progressOperationId;
+    const isCurrentProgressOperation = (operationId) => operationId === progressOperationId;
+
+    const getProgressElements = () => ({
+        wrap: document.getElementById('erome-progress-bar-wrap'),
+        bar: document.getElementById('erome-progress-bar'),
+        label: document.getElementById('erome-progress-label')
+    });
+
+    const hideProgress = (delay = 0, operationId = progressOperationId) => {
+        if (!isCurrentProgressOperation(operationId)) return;
+        clearTimeout(progressHideTimer);
+        const { wrap, bar, label } = getProgressElements();
+        if (!wrap || !bar || !label) return;
+        const hide = () => {
+            if (!isCurrentProgressOperation(operationId)) return;
+            wrap.classList.remove('visible');
+            bar.classList.remove('indeterminate');
+            bar.style.width = '0%';
+            label.textContent = '0%';
+        };
+        if (delay > 0) progressHideTimer = setTimeout(hide, delay);
+        else hide();
+    };
+
+    const setProgress = (done, total, operationId = progressOperationId) => {
+        if (!isCurrentProgressOperation(operationId)) return;
+        clearTimeout(progressHideTimer);
+        const { wrap, bar, label } = getProgressElements();
+        if (!wrap || !bar || !label) return;
+        if (total <= 0) { hideProgress(0, operationId); return; }
+        const percentage = Math.min(100, Math.max(0, Math.round((done / total) * 100)));
+        wrap.classList.add('visible');
+        wrap.setAttribute('aria-valuemin', '0');
+        wrap.setAttribute('aria-valuemax', String(total));
+        wrap.setAttribute('aria-valuenow', String(done));
+        bar.classList.remove('indeterminate');
+        bar.style.width = `${percentage}%`;
+        label.textContent = `${percentage}%`;
+        if (done >= total) hideProgress(900, operationId);
+    };
+
+    const formatBytes = (bytes) => {
+        const value = Number.isFinite(bytes) && bytes > 0 ? bytes : 0;
+        if (value < 1000) return `${Math.round(value)} B`;
+        const units = ['KB', 'MB', 'GB', 'TB'];
+        let size = value / 1000;
+        let unitIndex = 0;
+        while (size >= 1000 && unitIndex < units.length - 1) {
+            size /= 1000;
+            unitIndex++;
+        }
+        return `${size.toFixed(size >= 100 ? 0 : 1)} ${units[unitIndex]}`;
+    };
+
+    const setByteProgress = (loaded, total, complete = false, operationId = progressOperationId) => {
+        if (!isCurrentProgressOperation(operationId)) return;
+        clearTimeout(progressHideTimer);
         const wrap = document.getElementById('erome-progress-bar-wrap');
         const bar = document.getElementById('erome-progress-bar');
-        if (!wrap || !bar) return;
-        if (total === 0) { wrap.classList.remove('visible'); return; }
+        const label = document.getElementById('erome-progress-label');
+        if (!wrap || !bar || !label) return;
+        const loadedBytes = Number.isFinite(loaded) && loaded > 0 ? loaded : 0;
+        const totalBytes = Number.isFinite(total) && total > 0 ? total : 0;
         wrap.classList.add('visible');
-        bar.style.width = `${Math.round((done / total) * 100)}%`;
-        if (done >= total) setTimeout(() => wrap.classList.remove('visible'), 800);
+        if (totalBytes > 0) {
+            const percentage = complete
+                ? 100
+                : Math.min(100, Math.max(0, Math.round((loadedBytes / totalBytes) * 100)));
+            wrap.setAttribute('aria-valuemin', '0');
+            wrap.setAttribute('aria-valuemax', String(totalBytes));
+            wrap.setAttribute('aria-valuenow', String(Math.min(loadedBytes, totalBytes)));
+            bar.classList.remove('indeterminate');
+            bar.style.width = `${percentage}%`;
+            label.textContent = `${percentage}% · ${formatBytes(complete ? totalBytes : loadedBytes)} / ${formatBytes(totalBytes)}`;
+        } else if (complete) {
+            wrap.setAttribute('aria-valuemin', '0');
+            wrap.setAttribute('aria-valuemax', '1');
+            wrap.setAttribute('aria-valuenow', '1');
+            bar.classList.remove('indeterminate');
+            bar.style.width = '100%';
+            label.textContent = loadedBytes > 0 ? formatBytes(loadedBytes) : '100%';
+        } else {
+            wrap.removeAttribute('aria-valuemin');
+            wrap.removeAttribute('aria-valuemax');
+            wrap.removeAttribute('aria-valuenow');
+            bar.classList.add('indeterminate');
+            label.textContent = loadedBytes > 0 ? formatBytes(loadedBytes) : '...';
+        }
+        if (complete) hideProgress(900, operationId);
+    };
+
+    const updateTransferProgress = (transfers, complete = false, operationId = progressOperationId) => {
+        let loaded = 0;
+        let total = 0;
+        let unknownLoaded = 0;
+        let hasUnknownTransfer = false;
+        transfers.forEach((transfer) => {
+            if (transfer.total > 0) {
+                total += transfer.total;
+                loaded += Math.min(transfer.loaded, transfer.total);
+            } else {
+                unknownLoaded += transfer.loaded;
+                hasUnknownTransfer = true;
+            }
+        });
+        if (hasUnknownTransfer && !complete) {
+            setByteProgress(loaded + unknownLoaded, 0, false, operationId);
+            return;
+        }
+        setByteProgress(total > 0 ? loaded : unknownLoaded, total, complete, operationId);
     };
 
     const toAbsoluteUrl = (value) => {
@@ -1014,7 +1158,7 @@
         link.remove();
     };
 
-    const startDownload = (url, fileName, onSuccess, onFailure, target = '_self') => {
+    const startDownload = (url, fileName, onSuccess, onFailure, target = '_self', onProgress = () => {}) => {
         let settled = false;
         const fail = (reason) => {
             if (settled) return;
@@ -1035,13 +1179,18 @@
                 url,
                 name: fileName,
                 saveAs: false,
-                timeout: MEDIA_DOWNLOAD_TIMEOUT,
+                timeout: MEDIA_TRANSFER_TIMEOUT,
+                headers: { Referer: location.href },
                 onload: () => {
                     if (settled) return;
                     settled = true;
                     onSuccess();
                 },
                 onerror: fail,
+                onprogress: (progress) => {
+                    if (settled) return;
+                    onProgress(Number(progress.loaded) || 0, Number(progress.total) || 0);
+                },
                 onabort: () => fail('Download aborted'),
                 ontimeout: () => fail(t('requestTimeout'))
             });
@@ -1055,17 +1204,23 @@
         btnElement.classList.add('loading');
 
         const fileName = getFileName(item.src, item, item.id + 1);
+        let loadedBytes = 0;
+        let totalBytes = 0;
+        const progressOperation = beginProgressOperation();
+        setByteProgress(0, 0, false, progressOperation);
 
         startDownload(
             item.src,
             fileName,
             () => {
+                setByteProgress(totalBytes || loadedBytes, totalBytes || loadedBytes, true, progressOperation);
                 btnElement.disabled = false;
                 btnElement.classList.remove('loading');
                 btnElement.textContent = t('downloadBtnDone');
                 setTimeout(() => { btnElement.textContent = t('downloadBtn'); }, 2000);
             },
             (error, fallbackStarted) => {
+                hideProgress(0, progressOperation);
                 btnElement.disabled = false;
                 btnElement.classList.remove('loading');
                 btnElement.textContent = fallbackStarted ? t('downloadBtn') : t('downloadBtnFail');
@@ -1077,7 +1232,12 @@
                 );
                 setTimeout(() => { btnElement.textContent = t('downloadBtn'); }, 3000);
             },
-            '_blank'
+            '_blank',
+            (loaded, total) => {
+                loadedBytes = loaded;
+                if (total > 0) totalBytes = total;
+                setByteProgress(loadedBytes, totalBytes, false, progressOperation);
+            }
         );
     };
 
@@ -1136,10 +1296,15 @@
         btnElement.classList.add('loading');
 
         const fileName = getFileName(item.src, item, item.id + 1);
+        let loadedBytes = 0;
+        let totalBytes = 0;
+        const progressOperation = beginProgressOperation();
+        setByteProgress(0, 0, false, progressOperation);
 
-        downloadBlob(
-            item.src,
+        downloadTelegramBlob(
+            item,
             (blob) => {
+                setByteProgress(totalBytes || blob.size, totalBytes || blob.size, true, progressOperation);
                 const file = createTelegramFile(blob, item, fileName);
 
                 sendSingleMedia(
@@ -1168,6 +1333,7 @@
                 );
             },
             (error) => {
+                hideProgress(0, progressOperation);
                 btnElement.disabled = false;
                 btnElement.classList.remove('loading');
                 btnElement.innerHTML = t('downloadBtnFail');
@@ -1176,6 +1342,11 @@
                     btnElement.innerHTML = t('telegramBtn');
                 }, 3000);
                 console.error('[Download] Error:', error);
+            },
+            (loaded, total) => {
+                loadedBytes = loaded;
+                if (total > 0) totalBytes = total;
+                setByteProgress(loadedBytes, totalBytes, false, progressOperation);
             }
         );
     };
@@ -1263,16 +1434,25 @@
         let done = 0;
         let errors = 0;
         let fallbacks = 0;
+        const transfers = selectedMedia.map(() => ({ loaded: 0, total: 0, started: false, finished: false }));
+        const progressOperation = beginProgressOperation();
 
         btn.disabled = true;
-        setProgress(0, total);
+        setByteProgress(0, 0, false, progressOperation);
 
-        const onFinish = (status) => {
+        const onFinish = (status, transfer) => {
             done++;
             if (status === 'error') errors++;
             if (status === 'fallback') fallbacks++;
-            setProgress(done, total);
+            transfer.finished = true;
+            if (status === 'success') {
+                if (transfer.total === 0 && transfer.loaded > 0) transfer.total = transfer.loaded;
+                if (transfer.total > 0) transfer.loaded = transfer.total;
+            }
+            const completedSuccessfully = done === total && errors === 0 && fallbacks === 0;
+            updateTransferProgress(transfers, completedSuccessfully, progressOperation);
             if (done === total) {
+                if (!completedSuccessfully) hideProgress(900, progressOperation);
                 btn.disabled = false;
                 btn.classList.remove('erome-btn-loading');
                 btn.textContent = '⬇ ' + t('downloadSelected');
@@ -1287,23 +1467,38 @@
         btn.classList.add('erome-btn-loading');
         const next = () => {
             while (active < MAX_CONCURRENT_DOWNLOADS && index < total) {
-                const item = selectedMedia[index++];
+                const itemIndex = index++;
+                const item = selectedMedia[itemIndex];
+                const transfer = transfers[itemIndex];
+                transfer.started = true;
                 active++;
-                const fileName = getFileName(item.src, item, index);
+                const fileName = getFileName(item.src, item, itemIndex + 1);
                 startDownload(
                     item.src,
                     fileName,
-                    () => { active--; onFinish('success'); next(); },
+                    () => { active--; onFinish('success', transfer); next(); },
                     (error, fallbackStarted) => {
                         if (!fallbackStarted) console.error('[Download] Error:', error);
                         active--;
-                        onFinish(fallbackStarted ? 'fallback' : 'error');
+                        onFinish(fallbackStarted ? 'fallback' : 'error', transfer);
                         next();
+                    },
+                    '_self',
+                    (loaded, itemTotal) => {
+                        transfer.loaded = loaded;
+                        if (itemTotal > 0) transfer.total = itemTotal;
+                        updateTransferProgress(transfers, false, progressOperation);
                     }
                 );
             }
         };
-        next();
+        loadRemoteFileSizes(selectedMedia, (sizes) => {
+            sizes.forEach((size, itemIndex) => {
+                if (size > 0) transfers[itemIndex].total = size;
+            });
+            updateTransferProgress(transfers, false, progressOperation);
+            next();
+        });
     };
 
     const testTelegramConnection = () => {
@@ -1348,7 +1543,7 @@
         }
     };
 
-    const downloadBlob = (url, onSuccess, onError) => {
+    const downloadBlob = (url, onSuccess, onError, onProgress = () => {}) => {
         let settled = false;
         const fail = (message) => {
             if (settled) return;
@@ -1362,7 +1557,7 @@
                 url,
                 responseType: 'blob',
                 anonymous: false,
-                timeout: MEDIA_DOWNLOAD_TIMEOUT,
+                timeout: MEDIA_TRANSFER_TIMEOUT,
                 headers: {
                     'Referer': 'https://www.erome.com/',
                     'Origin': 'https://www.erome.com'
@@ -1374,7 +1569,12 @@
                         return;
                     }
                     settled = true;
+                    onProgress(res.response.size, res.response.size);
                     onSuccess(res.response);
+                },
+                onprogress: (progress) => {
+                    if (settled) return;
+                    onProgress(Number(progress.loaded) || 0, Number(progress.total) || 0);
                 },
                 onerror: (error) => {
                     console.error('[TG] Download failed:', error);
@@ -1387,6 +1587,92 @@
             console.error('[TG] Download request failed:', error);
             fail(getDownloadErrorMessage(error));
         }
+    };
+
+    const getContentLength = (headers) => {
+        const match = /^content-length:\s*(\d+)\s*$/im.exec(String(headers || ''));
+        return match ? Number(match[1]) : 0;
+    };
+
+    const getRemoteFileSize = (url, onDone) => {
+        let settled = false;
+        const done = (size = 0) => {
+            if (settled) return;
+            settled = true;
+            onDone(size);
+        };
+
+        try {
+            GM_xmlhttpRequest({
+                method: 'HEAD',
+                url,
+                anonymous: false,
+                timeout: MEDIA_METADATA_TIMEOUT,
+                headers: { Referer: location.href },
+                onload: (res) => done(
+                    res.status >= 200 && res.status < 300 ? getContentLength(res.responseHeaders) : 0
+                ),
+                onerror: () => done(),
+                ontimeout: () => done(),
+                onabort: () => done()
+            });
+        } catch {
+            done();
+        }
+    };
+
+    const loadRemoteFileSizes = (items, onDone) => {
+        const sizes = new Array(items.length).fill(0);
+        let index = 0;
+        let active = 0;
+        let completed = 0;
+
+        const next = () => {
+            while (active < MAX_CONCURRENT_DOWNLOADS && index < items.length) {
+                const itemIndex = index++;
+                active++;
+                getRemoteFileSize(items[itemIndex].src, (size) => {
+                    sizes[itemIndex] = size;
+                    active--;
+                    completed++;
+                    if (completed === items.length) onDone(sizes);
+                    else next();
+                });
+            }
+        };
+        next();
+    };
+
+    const getTelegramFileTooLargeMessage = (bytes) => {
+        return t('telegramFileTooLarge', (bytes / 1000000).toFixed(1));
+    };
+
+    const downloadTelegramBlob = (item, onSuccess, onError, onProgress = () => {}) => {
+        let decided = false;
+        const download = (remoteSize = 0) => {
+            if (decided) return;
+            decided = true;
+            if (remoteSize > 0) onProgress(0, remoteSize);
+            if (remoteSize > TELEGRAM_FILE_LIMIT_BYTES) {
+                onError(getTelegramFileTooLargeMessage(remoteSize));
+                return;
+            }
+
+            downloadBlob(
+                item.src,
+                (blob) => {
+                    if (blob.size > TELEGRAM_FILE_LIMIT_BYTES) {
+                        onError(getTelegramFileTooLargeMessage(blob.size));
+                        return;
+                    }
+                    onSuccess(blob);
+                },
+                onError,
+                onProgress
+            );
+        };
+
+        getRemoteFileSize(item.src, download);
     };
 
     const createSettledCallbacks = (onDone, onError) => {
@@ -1454,7 +1740,7 @@
                 method: 'POST',
                 url: `https://api.telegram.org/bot${token}/${upload.method}`,
                 data: formData,
-                timeout: TELEGRAM_REQUEST_TIMEOUT,
+                timeout: MEDIA_TRANSFER_TIMEOUT,
                 onload: (res) => handleTelegramResponse(res, done, fail),
                 onerror: () => fail(t('uploadNetworkError')),
                 ontimeout: () => fail(t('requestTimeout'))
@@ -1492,7 +1778,7 @@
                 method: 'POST',
                 url: `https://api.telegram.org/bot${token}/sendMediaGroup`,
                 data: formData,
-                timeout: TELEGRAM_REQUEST_TIMEOUT,
+                timeout: MEDIA_TRANSFER_TIMEOUT,
                 onload: (res) => handleTelegramResponse(res, done, fail),
                 onerror: () => {
                     console.error('[TG] Upload network error');
@@ -1568,10 +1854,11 @@
             return;
         }
         let done = 0, errors = 0;
+        const progressOperation = beginProgressOperation();
 
         btn.disabled = true;
         btn.classList.add('erome-btn-loading');
-        setProgress(0, total);
+        setProgress(0, total, progressOperation);
         showNotification(t('preparingSend', total), 'info');
 
         const BATCH_SIZE = 10;
@@ -1596,13 +1883,20 @@
 
             const batch = batches[currentBatch];
             const batchNum = currentBatch + 1;
+            const transfers = batch.map(() => ({ loaded: 0, total: 0, started: true, finished: false }));
             showNotification(t('downloadingGroup', batchNum, batches.length, batch.length), 'info');
+            setByteProgress(0, 0, false, progressOperation);
 
             const downloadPromises = batch.map((item, idx) => {
+                const transfer = transfers[idx];
                 return new Promise((resolve) => {
-                    downloadBlob(
-                        item.src,
+                    downloadTelegramBlob(
+                        item,
                         (blob) => {
+                            transfer.finished = true;
+                            if (transfer.total === 0) transfer.total = blob.size;
+                            transfer.loaded = transfer.total;
+                            updateTransferProgress(transfers, false, progressOperation);
                             try {
                                 const fileName = getFileName(item.src, item, done + idx + 1);
                                 resolve({
@@ -1617,7 +1911,16 @@
                                 resolve({ ok: false, error: getDownloadErrorMessage(error) });
                             }
                         },
-                        (error) => resolve({ ok: false, error })
+                        (error) => {
+                            transfer.finished = true;
+                            updateTransferProgress(transfers, false, progressOperation);
+                            resolve({ ok: false, error });
+                        },
+                        (loaded, itemTotal) => {
+                            transfer.loaded = loaded;
+                            if (itemTotal > 0) transfer.total = itemTotal;
+                            updateTransferProgress(transfers, false, progressOperation);
+                        }
                     );
                 });
             });
@@ -1625,6 +1928,8 @@
             Promise.all(downloadPromises)
                 .then((results) => {
                     const failedDownloads = results.filter(result => !result.ok);
+                    if (failedDownloads.length === 0) updateTransferProgress(transfers, true, progressOperation);
+                    else hideProgress(900, progressOperation);
                     const mediaGroup = results
                         .filter(result => result.ok)
                         .map(result => result.media);
@@ -1632,7 +1937,7 @@
                     if (failedDownloads.length > 0) {
                         errors += failedDownloads.length;
                         done += failedDownloads.length;
-                        setProgress(done, total);
+                        setProgress(done, total, progressOperation);
                         failedDownloads.forEach(result => console.error('[TG] Media download failed:', result.error));
                     }
 
@@ -1651,14 +1956,14 @@
 
                     const onGroupDone = () => {
                         done += mediaGroup.length;
-                        setProgress(done, total);
+                        setProgress(done, total, progressOperation);
                         currentBatch++;
                         setTimeout(() => processBatch(), 1000);
                     };
                     const onGroupError = (errMsg, failedCount = mediaGroup.length) => {
                         errors += failedCount;
                         done += mediaGroup.length;
-                        setProgress(done, total);
+                        setProgress(done, total, progressOperation);
                         showNotification(t('groupError', batchNum, errMsg), 'error', 5000);
                         currentBatch++;
                         setTimeout(() => processBatch(), 1000);
@@ -1683,6 +1988,8 @@
 
         const trigger = document.getElementById('erome-sidebar-trigger');
         if (trigger) trigger.title = t('openManager');
+        const progress = document.getElementById('erome-progress-bar-wrap');
+        if (progress) progress.setAttribute('aria-label', t('downloadProgressAria'));
 
         // Tabs
         const tabs = document.querySelectorAll('.erome-tab');

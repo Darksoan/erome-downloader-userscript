@@ -16,6 +16,9 @@ All notable changes to this project will be documented in this file.
 - Send GIF, WebP, WebM, MOV, and other unsupported album formats as documents.
 - Report browser download fallbacks separately from confirmed downloads and failures.
 - Prefer loaded `currentSrc` media over lazy-loading placeholder attributes.
+- Send the page referrer when downloading videos to prevent CDN error pages from being saved as MP4 files.
+- Allow long media transfers to run for up to 30 minutes and report Telegram's 50 MB file limit before downloading oversized files.
+- Enlarge responsive sidebar previews and show byte-based download progress with percentage and transferred size.
 
 ## [4.2.0] - 2026-05-09
 
