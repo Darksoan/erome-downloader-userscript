@@ -1,29 +1,108 @@
 // ==UserScript==
 // @name         Erome Downloader
-// @description  Download Erome media with bulk selection and Telegram delivery
+// @description  Download Erome media with bulk selection, mobile-friendly controls, and Telegram delivery
 // @match        https://erome.com/*
 // @match        https://*.erome.com/*
 // @grant        GM_download
 // @grant        GM_xmlhttpRequest
+// @grant        GM.xmlHttpRequest
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @grant        GM_registerMenuCommand
+// @grant        GM_info
 // @connect      erome.com
 // @connect      *.erome.com
 // @connect      api.telegram.org
 // @run-at       document-end
-// @version      4.2.0
+// @version      4.3.9
 // @license      MIT
 // ==/UserScript==
 
 (function () {
     'use strict';
 
-    let TELEGRAM_BOT_TOKEN = GM_getValue('tg_bot_token', '');
-    let TELEGRAM_CHAT_ID = GM_getValue('tg_chat_id', '');
-    let currentLang = GM_getValue('lang', 'pt-BR');
+    // Never store credentials in page storage when privileged storage is absent.
+    let storageFailed = false;
+    const hasStorage = () => !storageFailed && typeof GM_getValue === 'function' && typeof GM_setValue === 'function';
+    const readValue = (key, fallback) => {
+        if (!hasStorage()) return fallback;
+        try { return GM_getValue(key, fallback); }
+        catch { storageFailed = true; return fallback; }
+    };
+    const writeValue = (key, value) => {
+        if (hasStorage()) {
+            try { GM_setValue(key, value); return true; }
+            catch { storageFailed = true; }
+        }
+        reportCapability('storageUnavailable');
+        return false;
+    };
+    // Some mobile managers (e.g. Userscripts/Stay on iOS) only expose the
+    // GM.* promise API. Wrap it so the rest of the script keeps one call style.
+    const gmXhr = typeof GM_xmlhttpRequest === 'function'
+        ? GM_xmlhttpRequest
+        : (typeof GM === 'object' && GM && typeof GM.xmlHttpRequest === 'function'
+            ? (details) => {
+                const pending = GM.xmlHttpRequest(details);
+                if (pending && typeof pending.catch === 'function') pending.catch(() => {});
+                return pending;
+            }
+            : undefined);
+    const hasRequests = () => typeof gmXhr === 'function';
+    const coarsePointer = () => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+    const managerInfo = () => typeof GM_info === 'object' && GM_info ? GM_info : {};
+    const isViolentmonkey = () => /violentmonkey/i.test(managerInfo().scriptHandler || '');
+    const isTampermonkey = () => /tampermonkey/i.test(managerInfo().scriptHandler || '');
+    const managerLabel = () => {
+        const handler = managerInfo().scriptHandler;
+        return typeof handler === 'string' ? handler : '';
+    };
+    // Both Violentmonkey and Tampermonkey expose downloadMode. "browser" routes
+    // GM_download through the manager's downloads API, avoiding the synthetic
+    // anchor clicks that Firefox Android may block after the first save.
+    const usesBrowserDownloadApi = () => managerInfo().downloadMode === 'browser'
+        && typeof GM_download === 'function';
+    const isFirefoxAndroid = () => {
+        const platform = managerInfo().platform || {};
+        // Gecko/<n> also matches Firefox forks (Fennec, Iceraven, Waterfox...).
+        return (platform.os === 'android' && /firefox|gecko|fennec|waterfox|iceraven/i.test(platform.browserName || ''))
+            || (/Android/i.test(navigator.userAgent) && /Firefox\/|\bGecko\/\d/i.test(navigator.userAgent));
+    };
+    // Firefox Android has no downloads API (removed in Fx 79) and ignores
+    // downloads started from an extension background page, so GM_download
+    // silently does nothing there in any mode (violentmonkey#2679). Always save
+    // from the tab ourselves: GM_xmlhttpRequest -> blob: URL -> <a download>.
+    const needsBrowserSave = () => isFirefoxAndroid();
+
+    let TELEGRAM_BOT_TOKEN = readValue('tg_bot_token', '');
+    let TELEGRAM_CHAT_ID = readValue('tg_chat_id', '');
+    let currentLang = readValue('lang', 'pt-BR');
 
     const i18n = {
         'pt-BR': {
+            vmBrowserApiNeeded: 'Para salvar todos automaticamente: nas configurações do Violentmonkey, ative “Use browser download API” (usar a API de downloads do navegador), conceda a permissão solicitada e recarregue esta página.',
+            tmBrowserApiNeeded: 'Para salvar todos automaticamente: nas configurações do Tampermonkey, defina “Download Mode” como “Browser”, conceda a permissão de downloads solicitada e recarregue esta página.',
+            automaticDownloadMode: (manager) => manager
+                ? `Downloads: automático pelo ${manager} (Browser API).`
+                : 'Downloads: automático (Browser API).',
+            assistedDownloadMode: (manager) => manager
+                ? `Downloads: assistido pelo ${manager} (modo nativo).`
+                : 'Downloads: assistido (modo nativo).',
+            manualDownloadMode: 'Downloads: salvos pela própria aba no Firefox Android (o GM_download não funciona nele).',
+            browserSaveNeeded: 'Os arquivos são baixados e salvos automaticamente, um por vez.',
+            saveNextFile: 'Arquivo pronto. Toque em Salvar arquivo para continuar a fila.',
+            saveQueueResult: (count, errors) => `${count} salvamento(s) solicitado(s), ${errors} erro(s). Confira os Downloads do Firefox.`,
+            prepareFile: 'Preparar para salvar',
+            saveFile: 'Salvar arquivo',
+            fileReady: 'Arquivo pronto. Toque em Salvar arquivo antes de preparar o próximo.',
+            saveRequested: 'Salvamento solicitado ao navegador. Confira os Downloads do Firefox; o script não confirma a gravação.',
+            invalidMediaFile: 'A resposta não contém um arquivo de mídia válido. Tente abrir o link original.',
+            storageUnavailable: "Armazenamento do gerenciador indisponível. Não foi possível salvar as configurações.",
+            requestsUnavailable: "Requisições do gerenciador indisponíveis. O envio ao Telegram requer essa permissão.",
+            downloadUnavailable: "Download do gerenciador indisponível.",
+            manualDownloads: "Abertura manual disponível",
+            manualHint: "Toque em um arquivo para abrir em outra aba e salvar pelo navegador. A abertura não confirma o download.",
+            downloadAborted: "Download cancelado.",
             title: 'Download Manager',
             close: 'Fechar',
             tabDownload: 'Download',
@@ -67,7 +146,7 @@
             networkError: 'Falha de rede ao conectar com o Telegram.',
             downloadStarted: (name) => `Download iniciado: ${name}`,
             filesDownloaded: (n) => `${n} arquivo(s) enviado(s) para download!`,
-            downloadFallbackStarted: (name) => `Fallback iniciado no navegador: ${name}`,
+            downloadFallbackStarted: (name) => `Abertura manual disponível: ${name}`,
             sendingFile: (name) => `Enviando ${name}...`,
             sent: (name) => `Enviado: ${name}`,
             sendError: (msg) => `Erro ao enviar: ${msg}`,
@@ -77,8 +156,8 @@
             downloadingGroup: (cur, total, count) => `Baixando grupo ${cur}/${total} (${count} arquivos)...`,
             sendingGroup: (cur, total) => `Enviando grupo ${cur}/${total}...`,
             allSent: (n, groups) => `${n} arquivo(s) enviado(s) com sucesso em ${groups} grupo(s)!`,
-            partialSent: (ok, err) => `${ok} enviado(s), ${err} erro(s). Veja o console (F12).`,
-            filesDownloadResult: (ok, fallback, err) => `${ok} concluído(s), ${fallback} fallback(s) iniciado(s), ${err} erro(s).`,
+            partialSent: (ok, err) => `${ok} enviado(s), ${err} erro(s). Veja os detalhes no painel.`,
+            filesDownloadResult: (ok, fallback, err) => `${ok} concluído(s), ${fallback} abertura(s) manual(is) disponível(is), ${err} erro(s).`,
             groupError: (num, msg) => `Erro no grupo ${num}: ${msg}`,
             groupDownloadError: (num, error) => `Erro ao baixar grupo ${num}: ${error}`,
             sendSuccess: 'Enviado com sucesso',
@@ -101,6 +180,29 @@
             requestTimeout: 'A requisição excedeu o tempo limite.',
         },
         'en-US': {
+            vmBrowserApiNeeded: 'To save all files automatically: enable “Use browser download API” in Violentmonkey settings, grant the requested permission, and reload this page.',
+            tmBrowserApiNeeded: 'To save all files automatically: in Tampermonkey settings, set “Download Mode” to “Browser”, grant the requested downloads permission, and reload this page.',
+            automaticDownloadMode: (manager) => manager
+                ? `Downloads: automatic via ${manager} (Browser API).`
+                : 'Downloads: automatic (Browser API).',
+            assistedDownloadMode: (manager) => manager
+                ? `Downloads: assisted by ${manager} (native mode).`
+                : 'Downloads: assisted (native mode).',
+            manualDownloadMode: 'Downloads: saved from the tab itself in Firefox Android (GM_download does not work there).',
+            browserSaveNeeded: 'Files are downloaded and saved automatically, one at a time.',
+            saveNextFile: 'File ready. Tap Save file to continue the queue.',
+            saveQueueResult: (count, errors) => `${count} save request(s), ${errors} error(s). Check Firefox Downloads.`,
+            prepareFile: 'Prepare to save',
+            saveFile: 'Save file',
+            fileReady: 'File ready. Tap Save file before preparing the next one.',
+            saveRequested: 'Save requested from the browser. Check Firefox Downloads; the script cannot confirm the file was saved.',
+            invalidMediaFile: 'The response is not a valid media file. Try opening the original link.',
+            storageUnavailable: "Manager storage is unavailable. Settings could not be saved.",
+            requestsUnavailable: "Manager requests are unavailable. Telegram delivery requires this permission.",
+            downloadUnavailable: "Manager download is unavailable.",
+            manualDownloads: "Manual opening available",
+            manualHint: "Tap a file to open it in another tab and save using the browser. Opening does not confirm a download.",
+            downloadAborted: "Download cancelled.",
             title: 'Download Manager',
             close: 'Close',
             tabDownload: 'Download',
@@ -144,7 +246,7 @@
             networkError: 'Network error connecting to Telegram.',
             downloadStarted: (name) => `Download started: ${name}`,
             filesDownloaded: (n) => `${n} file(s) sent for download!`,
-            downloadFallbackStarted: (name) => `Browser fallback started: ${name}`,
+            downloadFallbackStarted: (name) => `Manual opening available: ${name}`,
             sendingFile: (name) => `Sending ${name}...`,
             sent: (name) => `Sent: ${name}`,
             sendError: (msg) => `Error sending: ${msg}`,
@@ -154,8 +256,8 @@
             downloadingGroup: (cur, total, count) => `Downloading group ${cur}/${total} (${count} files)...`,
             sendingGroup: (cur, total) => `Sending group ${cur}/${total}...`,
             allSent: (n, groups) => `${n} file(s) sent successfully in ${groups} group(s)!`,
-            partialSent: (ok, err) => `${ok} sent, ${err} error(s). Check console (F12).`,
-            filesDownloadResult: (ok, fallback, err) => `${ok} completed, ${fallback} fallback(s) started, ${err} error(s).`,
+            partialSent: (ok, err) => `${ok} sent, ${err} error(s). See details in the panel.`,
+            filesDownloadResult: (ok, fallback, err) => `${ok} completed, ${fallback} manual opening(s) available, ${err} error(s).`,
             groupError: (num, msg) => `Error in group ${num}: ${msg}`,
             groupDownloadError: (num, error) => `Error downloading group ${num}: ${error}`,
             sendSuccess: 'Sent successfully',
@@ -178,6 +280,29 @@
             requestTimeout: 'The request timed out.',
         },
         'es': {
+            vmBrowserApiNeeded: 'Para guardar todos automáticamente: active “Use browser download API” en los ajustes de Violentmonkey, conceda el permiso solicitado y recargue esta página.',
+            tmBrowserApiNeeded: 'Para guardar todos automáticamente: en los ajustes de Tampermonkey, defina “Download Mode” como “Browser”, conceda el permiso de descargas solicitado y recargue esta página.',
+            automaticDownloadMode: (manager) => manager
+                ? `Descargas: automáticas mediante ${manager} (Browser API).`
+                : 'Descargas: automáticas (Browser API).',
+            assistedDownloadMode: (manager) => manager
+                ? `Descargas: asistidas por ${manager} (modo nativo).`
+                : 'Descargas: asistidas (modo nativo).',
+            manualDownloadMode: 'Descargas: guardadas desde la propia pestaña en Firefox Android (GM_download no funciona allí).',
+            browserSaveNeeded: 'Los archivos se descargan y guardan automáticamente, uno a la vez.',
+            saveNextFile: 'Archivo listo. Toque Guardar archivo para continuar la cola.',
+            saveQueueResult: (count, errors) => `${count} solicitud(es) de guardado, ${errors} error(es). Revise Descargas de Firefox.`,
+            prepareFile: 'Preparar para guardar',
+            saveFile: 'Guardar archivo',
+            fileReady: 'Archivo listo. Toque Guardar archivo antes de preparar el siguiente.',
+            saveRequested: 'Guardado solicitado al navegador. Revise Descargas de Firefox; el script no confirma que se guardó.',
+            invalidMediaFile: 'La respuesta no contiene un archivo multimedia válido. Intente abrir el enlace original.',
+            storageUnavailable: "El almacenamiento del gestor no está disponible. No se pudieron guardar los ajustes.",
+            requestsUnavailable: "Las solicitudes del gestor no están disponibles. El envío a Telegram requiere este permiso.",
+            downloadUnavailable: "La descarga del gestor no está disponible.",
+            manualDownloads: "Apertura manual disponible",
+            manualHint: "Toque un archivo para abrirlo en otra pestaña y guardarlo con el navegador. Abrirlo no confirma la descarga.",
+            downloadAborted: "Descarga cancelada.",
             title: 'Gestor de Descargas',
             close: 'Cerrar',
             tabDownload: 'Descargar',
@@ -221,7 +346,7 @@
             networkError: 'Error de red al conectar con Telegram.',
             downloadStarted: (name) => `Descarga iniciada: ${name}`,
             filesDownloaded: (n) => `¡${n} archivo(s) enviado(s) para descarga!`,
-            downloadFallbackStarted: (name) => `Fallback iniciado en el navegador: ${name}`,
+            downloadFallbackStarted: (name) => `Apertura manual disponible: ${name}`,
             sendingFile: (name) => `Enviando ${name}...`,
             sent: (name) => `Enviado: ${name}`,
             sendError: (msg) => `Error al enviar: ${msg}`,
@@ -231,8 +356,8 @@
             downloadingGroup: (cur, total, count) => `Descargando grupo ${cur}/${total} (${count} archivos)...`,
             sendingGroup: (cur, total) => `Enviando grupo ${cur}/${total}...`,
             allSent: (n, groups) => `¡${n} archivo(s) enviado(s) con éxito en ${groups} grupo(s)!`,
-            partialSent: (ok, err) => `${ok} enviado(s), ${err} error(es). Vea la consola (F12).`,
-            filesDownloadResult: (ok, fallback, err) => `${ok} completada(s), ${fallback} fallback(s) iniciado(s), ${err} error(es).`,
+            partialSent: (ok, err) => `${ok} enviado(s), ${err} error(es). Vea los detalles en el panel.`,
+            filesDownloadResult: (ok, fallback, err) => `${ok} completada(s), ${fallback} apertura(s) manual(es) disponible(s), ${err} error(es).`,
             groupError: (num, msg) => `Error en grupo ${num}: ${msg}`,
             groupDownloadError: (num, error) => `Error al descargar grupo ${num}: ${error}`,
             sendSuccess: 'Enviado con éxito',
@@ -276,7 +401,9 @@
         telegram: '#229ED9'
     };
 
-    const MAX_CONCURRENT_DOWNLOADS = 3;
+    const MAX_CONCURRENT_DOWNLOADS = coarsePointer() ? 2 : 3;
+    // Firefox Android uses its own sequential queue (startBrowserSaveQueue).
+    const downloadConcurrency = () => MAX_CONCURRENT_DOWNLOADS;
     const MEDIA_METADATA_TIMEOUT = 15000;
     const MEDIA_TRANSFER_TIMEOUT = 30 * 60 * 1000;
     const TELEGRAM_REQUEST_TIMEOUT = 120000;
@@ -307,7 +434,7 @@
             #erome-modal-overlay {
                 display: none; position: fixed; top: 0; left: 0;
                 width: 100%; height: 100%;
-                background: rgba(0,0,0,0.7); z-index: 999999;
+                background: transparent; pointer-events: none; z-index: 999999;
                 animation: fadeIn 0.2s ease;
             }
             @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -315,10 +442,11 @@
             @keyframes slideOutRight { from { transform: translateX(0); } to { transform: translateX(100%); } }
 
             #erome-modal {
+                pointer-events: auto;
                 position: fixed; top: 0; right: 0; height: 100vh;
                 background: ${COLORS.background};
                 border-left: 2px solid ${COLORS.primary};
-                width: 520px; max-width: 100vw;
+                width: 520px; max-width: 85vw;
                 display: flex; flex-direction: column;
                 animation: slideInRight 0.3s ease;
             }
@@ -474,20 +602,21 @@
             @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
             #erome-sidebar-trigger {
+                display: block; visibility: visible; opacity: 1; overflow: visible;
                 position: fixed; top: 0; right: 0; width: 4px; height: 100vh;
                 background: ${COLORS.primary}; z-index: 999998; cursor: pointer;
                 transition: width 0.2s ease;
             }
             #erome-sidebar-trigger:hover { width: 8px; }
-            #erome-sidebar-trigger::before {
-                content: '⬅'; position: absolute; left: -32px; top: 50%;
+            #erome-sidebar-trigger .erome-trigger-handle {
+                position: absolute; left: -32px; top: 50%;
                 transform: translateY(-50%); background: ${COLORS.primary};
                 color: ${COLORS.background}; width: 32px; height: 60px;
                 display: flex; align-items: center; justify-content: center;
                 border-radius: 4px 0 0 4px; font-size: 16px; opacity: 1;
                 transition: opacity 0.2s ease;
             }
-            #erome-sidebar-trigger:hover::before { opacity: 1; }
+            #erome-sidebar-trigger:hover .erome-trigger-handle { opacity: 1; }
 
             .erome-counter {
                 background: ${COLORS.cardBg}; color: ${COLORS.primary}; padding: 8px 12px;
@@ -657,14 +786,54 @@
                 }
             }
 
+            #erome-modal { height: 100vh; height: 100dvh; height: var(--erome-visible-height, 100dvh); top: var(--erome-visible-top, 0px); box-sizing: border-box; overflow: hidden; }
+            #erome-modal *, #erome-sidebar-trigger, .erome-toast { box-sizing: border-box; }
+            #erome-modal-header { flex: 0 0 auto; }
+            #erome-modal-controls { min-height: 0; max-height: 55%; overflow-y: auto; flex-shrink: 1; overscroll-behavior: contain; }
+            #erome-modal-content { min-height: 0; overscroll-behavior: contain; }
+            #erome-modal .erome-input-group, #erome-modal .erome-media-info { min-width: 0; }
+            #erome-modal .erome-media-preview { flex-shrink: 0; }
+            #erome-modal .erome-checkbox { appearance: auto; accent-color: ${COLORS.primary}; cursor: pointer; }
+            #erome-modal .erome-checkbox::after { content: none; }
+            #erome-sidebar-trigger { padding: 0; border: 0; height: 100vh; height: 100dvh; }
+            #erome-sidebar-trigger:focus-visible { outline: 3px solid white; outline-offset: -3px; }
+            #erome-capabilities { color: ${COLORS.error}; font-size: 13px; overflow-wrap: anywhere; }
+            #erome-transfer-errors { color: ${COLORS.error}; font-size: 13px; overflow-wrap: anywhere; }
+            .erome-chat-label { background: transparent; color: inherit; font: inherit; border: 0; cursor: pointer; }
+            #erome-manual-downloads { padding: 8px; border: 1px solid ${COLORS.primary}; font-size: 13px; overflow-wrap: anywhere; }
+            #erome-manual-downloads p { margin: 8px 0; }
+            #erome-manual-downloads a { color: ${COLORS.primary}; display: flex; align-items: center; min-height: 48px; }
+            #erome-manual-downloads small { display: block; color: ${COLORS.textSecondary}; }
+            .erome-toast { min-width: 0; width: min(400px, calc(100% - 24px)); right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); overflow-wrap: anywhere; background: ${COLORS.cardBg}; }
+            @media (pointer: coarse) {
+                #erome-sidebar-trigger, #erome-sidebar-trigger:hover { top: 45%; width: 48px; height: 60px; border-radius: 8px 0 0 8px; }
+                #erome-sidebar-trigger .erome-trigger-handle { left: 0; width: 48px; }
+                #erome-modal button, #erome-modal select, #erome-modal input:not([type="checkbox"]) { min-width: 48px; min-height: 48px; }
+                #erome-modal .erome-input { font-size: 16px; }
+                #erome-modal .erome-media-item { min-height: 48px; }
+                .erome-inline-btn { width: 48px; height: 48px; }
+                .erome-inline-actions { gap: 8px; }
+                #erome-modal { padding-bottom: env(safe-area-inset-bottom, 0px); }
+            }
+            @media (max-height: 480px) {
+                #erome-modal-header { padding: 8px 12px; }
+                #erome-modal-title { margin-bottom: 4px; }
+                #erome-modal-close { margin-top: 4px; }
+                #erome-modal-controls { max-height: 50%; }
+            }
+            @media (prefers-reduced-motion: reduce) {
+                #erome-modal, #erome-modal-overlay, .erome-toast { animation: none !important; }
+            }
             @media (max-width: 560px) {
-                #erome-modal { width: 100vw; border-left: 0; }
+                #erome-modal { width: 85vw; }
                 #erome-modal-header { padding: 16px; }
                 #erome-modal-controls { padding: 12px 16px; }
                 #erome-modal-content { padding: 12px; }
                 .erome-media-item { padding: 10px; }
                 .erome-media-preview { width: 112px; margin-right: 10px; }
                 .erome-checkbox { margin-right: 10px; }
+                .erome-input-row { flex-wrap: wrap; }
+                .erome-input-row .erome-input-group { flex-basis: 180px; }
             }
 
 
@@ -673,16 +842,34 @@
     };
 
     const createSidebarTrigger = () => {
+        // Keep the original non-native launcher: host button styles and native
+        // button painting can hide or clip its handle outside the narrow bar.
         const trigger = document.createElement('div');
+        trigger.setAttribute('role', 'button');
+        trigger.tabIndex = 0;
+        trigger.setAttribute('aria-label', t('openManager'));
+        trigger.setAttribute('aria-controls', 'erome-modal');
+        trigger.setAttribute('aria-expanded', 'false');
         trigger.id = 'erome-sidebar-trigger';
         trigger.title = t('openManager');
         trigger.onclick = openModal;
+        trigger.onkeydown = (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                openModal();
+            }
+        };
+        const handle = document.createElement('span');
+        handle.className = 'erome-trigger-handle';
+        handle.setAttribute('aria-hidden', 'true');
+        handle.textContent = '⬅';
+        trigger.appendChild(handle);
         document.body.appendChild(trigger);
     };
 
     const getChatHistory = () => {
         try {
-            const stored = GM_getValue('tg_chat_history', '[]');
+            const stored = readValue('tg_chat_history', '[]');
             const parsed = typeof stored === 'string' ? JSON.parse(stored) : stored;
             if (!Array.isArray(parsed)) return [];
             return parsed
@@ -698,13 +885,13 @@
         const history = getChatHistory();
         if (!history.find(c => c.id === id)) {
             history.unshift({ id, label: label || id });
-            GM_setValue('tg_chat_history', JSON.stringify(history.slice(0, 10)));
+            writeValue('tg_chat_history', JSON.stringify(history.slice(0, 10)));
         }
         renderChatHistory();
     };
 
     const removeChatFromHistory = (id) => {
-        GM_setValue('tg_chat_history', JSON.stringify(getChatHistory().filter(c => c.id !== id)));
+        writeValue('tg_chat_history', JSON.stringify(getChatHistory().filter(c => c.id !== id)));
         renderChatHistory();
     };
 
@@ -715,7 +902,9 @@
         getChatHistory().forEach(chat => {
             const tag = document.createElement('span');
             tag.className = 'erome-chat-tag';
-            const label = document.createElement('span');
+            const label = document.createElement('button');
+            label.type = 'button';
+            label.className = 'erome-chat-label';
             label.textContent = chat.label;
             const remove = document.createElement('button');
             remove.type = 'button';
@@ -726,7 +915,7 @@
             label.onclick = () => {
                 document.getElementById('erome-chat-id-input').value = chat.id;
                 TELEGRAM_CHAT_ID = chat.id;
-                GM_setValue('tg_chat_id', chat.id);
+                writeValue('tg_chat_id', chat.id);
             };
             remove.onclick = (e) => {
                 e.stopPropagation();
@@ -743,6 +932,9 @@
 
         const modal = document.createElement('div');
         modal.id = 'erome-modal';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'false');
+        modal.setAttribute('aria-labelledby', 'erome-modal-title');
         modal.innerHTML = `
             <div id="erome-modal-header">
                 <h2 id="erome-modal-title">${t('title')}</h2>
@@ -751,7 +943,10 @@
             </div>
 
             <div id="erome-modal-controls">
-                <div id="erome-notification"></div>
+                <div id="erome-capabilities" role="status"></div>
+                <div id="erome-manual-downloads"></div>
+                <div id="erome-transfer-errors" role="status" hidden></div>
+                <div id="erome-notification" role="status" aria-live="polite"></div>
                 <div id="erome-progress-bar-wrap" role="progressbar" aria-label="${t('downloadProgressAria')}">
                     <div id="erome-progress-bar"></div>
                     <span id="erome-progress-label">0%</span>
@@ -789,6 +984,7 @@
 
                 <!-- Aba Config -->
                 <div class="erome-tab-panel" id="tab-config">
+                    <p id="erome-download-mode" role="status"></p>
                     <div class="erome-input-group">
                         <label class="erome-input-label" id="label-language">
                             <svg class="erome-label-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -853,8 +1049,8 @@
                 showNotification(t('invalidChatId'), 'error', 3000);
                 return;
             }
+            if (!writeValue('tg_chat_id', normalized)) return;
             TELEGRAM_CHAT_ID = normalized;
-            GM_setValue('tg_chat_id', normalized);
             saveChatToHistory(normalized, val);
             const changed = normalized !== val ? t('chatIdConverted', normalized) : '';
             showNotification(`${t('chatIdSaved')}${changed}`, 'success', 3500);
@@ -870,14 +1066,14 @@
                 showNotification(t('invalidToken'), 'error', 3000);
                 return;
             }
+            if (!writeValue('tg_bot_token', val)) return;
             TELEGRAM_BOT_TOKEN = val;
-            GM_setValue('tg_bot_token', val);
             showNotification(t('tokenSaved'), 'success', 2500);
         };
 
         document.getElementById('erome-lang-select').onchange = (e) => {
             currentLang = e.target.value;
-            GM_setValue('lang', currentLang);
+            writeValue('lang', currentLang);
             refreshModalTexts();
         };
 
@@ -887,12 +1083,21 @@
     const showNotification = (message, type = 'info', autoDismissMs = 0) => {
         const el = document.getElementById('erome-notification');
         if (!el) return;
+        clearTimeout(el._timer);
         el.textContent = message;
         el.className = type;
         if (autoDismissMs > 0) {
-            clearTimeout(el._timer);
             el._timer = setTimeout(() => { el.className = ''; }, autoDismissMs);
         }
+    };
+
+    const showTransferError = (message) => {
+        const container = document.getElementById('erome-transfer-errors');
+        if (!container) return;
+        container.hidden = false;
+        const detail = document.createElement('p');
+        detail.textContent = message;
+        container.appendChild(detail);
     };
 
     const showToast = (title, message, type = 'info', duration = 4000) => {
@@ -1144,46 +1349,319 @@
     const getDownloadErrorMessage = (reason) => {
         if (typeof reason === 'string' && reason) return reason;
         if (reason && typeof reason.message === 'string' && reason.message) return reason.message;
+        // Tampermonkey reports failures as { error: 'not_permitted', details }.
+        if (reason && typeof reason.error === 'string' && reason.error) return reason.error;
+        if (reason && typeof reason.details === 'string' && reason.details) return reason.details;
         return t('downloadBlobError');
     };
 
-    const tryBrowserDownload = (url, fileName, target = '_self') => {
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-        link.target = target;
-        link.rel = 'noopener';
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
+    const reportCapability = (key) => {
+        updateCapabilities();
+        showNotification(t(key), 'error');
+        showToast(t('configNeeded'), t(key), 'error', 6000);
+    };
+
+    const updateCapabilities = () => {
+        const el = document.getElementById('erome-capabilities');
+        if (!el) return;
+        const warnings = [];
+        if (!hasStorage()) warnings.push(t('storageUnavailable'));
+        if (!hasRequests()) warnings.push(t('requestsUnavailable'));
+        // Firefox Android never uses GM_download, so its absence is irrelevant there.
+        if (typeof GM_download !== 'function' && !needsBrowserSave()) warnings.push(t('downloadUnavailable'));
+        // In native mode both managers may still accept GM_download calls but
+        // fail them on mobile. Point users to the browser download API.
+        if (!needsBrowserSave() && !usesBrowserDownloadApi()) {
+            if (isViolentmonkey()) warnings.push(t('vmBrowserApiNeeded'));
+            else if (isTampermonkey()) warnings.push(t('tmBrowserApiNeeded'));
+        }
+        el.textContent = warnings.join(' ');
+        el.hidden = warnings.length === 0;
+        const mode = document.getElementById('erome-download-mode');
+        if (mode) {
+            const manager = managerLabel();
+            mode.textContent = needsBrowserSave() ? t('manualDownloadMode')
+                : usesBrowserDownloadApi() ? t('automaticDownloadMode', manager)
+                    : manager ? t('assistedDownloadMode', manager) : '';
+            mode.hidden = !mode.textContent;
+        }
+    };
+
+    const manualDownloads = new Map();
+    let manualPreparationBusy = false;
+    let browserSaveQueueBusy = false;
+    let browserSaveQueuePending = null;
+    // Firefox Android reads a blob: download only after the user confirms the
+    // download sheet, so revoking the URL right after the click made the
+    // download fail. Keep each URL alive for a while and revoke it later.
+    const BLOB_URL_LIFETIME = 5 * 60 * 1000;
+    const liveObjectUrls = new Set();
+    const revokeObjectUrlLater = (url, objectUrl) => {
+        setTimeout(() => {
+            if (!liveObjectUrls.delete(objectUrl)) return;
+            URL.revokeObjectURL(objectUrl);
+            const entry = manualDownloads.get(url);
+            if (entry && entry.objectUrl === objectUrl) {
+                entry.objectUrl = '';
+                renderManualDownloads();
+            }
+        }, BLOB_URL_LIFETIME);
+    };
+    const revokeAllObjectUrls = () => {
+        liveObjectUrls.forEach(objectUrl => URL.revokeObjectURL(objectUrl));
+        liveObjectUrls.clear();
+    };
+    // Same approach Violentmonkey itself switched to for Firefox mobile
+    // (violentmonkey#2679): Firefox Android has no downloads API and ignores
+    // downloads started from the extension background page, so the file must
+    // be saved from the tab through an <a download> pointing at a blob: URL.
+    const saveBlobUrlInTab = (objectUrl, fileName) => {
+        const anchor = document.createElement('a');
+        anchor.href = objectUrl;
+        anchor.download = fileName;
+        anchor.rel = 'noopener';
+        anchor.style.display = 'none';
+        (document.body || document.documentElement).appendChild(anchor);
+        anchor.click();
+        setTimeout(() => anchor.remove(), 1000);
+    };
+    const prepareManualDownload = (url, autoSave = true, onDone = () => {}, onProgress = () => {}, operationId = null) => {
+        if (manualPreparationBusy) { onDone(false); return; }
+        const entry = manualDownloads.get(url);
+        if (!entry) { onDone(false); return; }
+        if (!hasRequests()) { reportCapability('requestsUnavailable'); onDone(false); return; }
+        manualPreparationBusy = true;
+        entry.error = '';
+        entry.status = 'downloading';
+        const preparationOperation = operationId === null ? beginProgressOperation() : operationId;
+        if (operationId === null) setByteProgress(0, 0, false, preparationOperation);
+        renderManualDownloads();
+        const fail = (error) => {
+            manualPreparationBusy = false;
+            entry.status = 'error';
+            entry.error = t('downloadError', getDownloadErrorMessage(error));
+            if (operationId === null) hideProgress(0, preparationOperation);
+            renderManualDownloads();
+            onDone(false);
+        };
+        downloadBlob(url, (blob) => {
+            try {
+                // Do not offer an HTML error page or an empty response as media.
+                if (!blob || !blob.size || typeof blob.slice !== 'function'
+                    || /^(text\/|application\/(json|xhtml))/i.test(blob.type || '')) {
+                    fail(t('invalidMediaFile'));
+                    return;
+                }
+                const objectUrl = URL.createObjectURL(blob);
+                liveObjectUrls.add(objectUrl);
+                revokeObjectUrlLater(url, objectUrl);
+                entry.objectUrl = objectUrl;
+                if (operationId === null) setByteProgress(blob.size, blob.size, true, preparationOperation);
+                manualPreparationBusy = false;
+                if (autoSave) {
+                    saveBlobUrlInTab(objectUrl, entry.fileName);
+                    entry.status = 'saved';
+                    entry.error = t('saveRequested');
+                } else {
+                    entry.error = t('fileReady');
+                }
+                renderManualDownloads();
+            } catch (error) { fail(error); return; }
+            onDone(true);
+        }, fail, (loaded, total) => {
+            if (operationId === null) setByteProgress(loaded, total, false, preparationOperation);
+            onProgress(loaded, total);
+        });
+    };
+    // Firefox Android queue. The first file can be saved from the original
+    // click, but the browser ignores later synthetic saves. Every following
+    // file is prepared one at a time and waits for a real tap on its save
+    // link, which also advances the queue.
+    const startBrowserSaveQueue = (files, onComplete = () => {}) => {
+        const button = document.getElementById('erome-download-selected');
+        if (browserSaveQueueBusy || manualPreparationBusy) { onComplete(0, 0, true); return; }
+        if (!hasRequests()) { reportCapability('requestsUnavailable'); onComplete(0, files.length); return; }
+        browserSaveQueueBusy = true;
+        browserSaveQueuePending = null;
+        if (button) { button.disabled = true; button.classList.add('erome-btn-loading'); }
+        let index = 0, requested = 0, errors = 0;
+        const progressOperation = beginProgressOperation();
+        const transfers = files.map(() => ({loaded: 0, total: 0}));
+        manualDownloads.clear();
+        files.forEach(({url, fileName}) => offerManualDownload(url, fileName, ''));
+        setByteProgress(0, 0, false, progressOperation);
+        const updateProgress = (complete = false) => updateTransferProgress(transfers, complete, progressOperation);
+        const finish = () => {
+            browserSaveQueueBusy = false;
+            browserSaveQueuePending = null;
+            if (button) {
+                button.disabled = false;
+                button.classList.remove('erome-btn-loading');
+                button.textContent = '⬇ ' + t('downloadSelected');
+            }
+            const completedSuccessfully = errors === 0;
+            updateProgress(completedSuccessfully);
+            if (!completedSuccessfully) hideProgress(900, progressOperation);
+            showNotification(t('saveQueueResult', requested, errors), completedSuccessfully ? 'success' : 'error', 5000);
+            onComplete(requested, errors);
+        };
+        const prepare = (autoSave) => {
+            if (index === files.length) { finish(); return; }
+            const itemIndex = index++;
+            const file = files[itemIndex];
+            const transfer = transfers[itemIndex];
+            const url = new URL(file.url, location.href).href;
+            const markTransferDone = () => {
+                if (transfer.total === 0 && transfer.loaded > 0) transfer.total = transfer.loaded;
+                if (transfer.total > 0) transfer.loaded = transfer.total;
+                updateProgress();
+            };
+            prepareManualDownload(url, autoSave, (ok) => {
+                if (!ok) {
+                    errors++;
+                    updateProgress();
+                    // A failed transfer never requested a save, so the next
+                    // file may still use the original click's activation.
+                    prepare(autoSave);
+                    return;
+                }
+                markTransferDone();
+                if (autoSave) {
+                    requested++;
+                    // The blob URL stays alive for a few minutes, but only the
+                    // last completed row remains as a manual fallback.
+                    if (index < files.length) {
+                        manualDownloads.delete(url);
+                        renderManualDownloads();
+                    }
+                    prepare(false);
+                    return;
+                }
+                browserSaveQueuePending = {url, advance: () => {
+                    if (!browserSaveQueuePending || browserSaveQueuePending.url !== url) return;
+                    browserSaveQueuePending = null;
+                    requested++;
+                    if (index < files.length) {
+                        manualDownloads.delete(url);
+                        renderManualDownloads();
+                    }
+                    prepare(false);
+                }};
+                renderManualDownloads();
+            }, (loaded, total) => {
+                transfer.loaded = loaded;
+                if (total > 0) transfer.total = total;
+                updateProgress();
+            }, progressOperation);
+        };
+        loadRemoteFileSizes(files.map(file => ({src: file.url})), (sizes) => {
+            sizes.forEach((size, i) => { if (size > 0) transfers[i].total = size; });
+            updateProgress();
+            prepare(true);
+        });
+    };
+    const renderManualDownloads = () => {
+        const container = document.getElementById('erome-manual-downloads');
+        if (!container) return;
+        container.replaceChildren();
+        container.hidden = manualDownloads.size === 0;
+        if (container.hidden) return;
+        const title = document.createElement('strong');
+        title.textContent = t('manualDownloads');
+        const hint = document.createElement('p');
+        hint.textContent = needsBrowserSave()
+            ? (browserSaveQueuePending ? t('saveNextFile') : t('browserSaveNeeded'))
+            : t('manualHint');
+        container.append(title, hint);
+        manualDownloads.forEach(({fileName, error, objectUrl}, url) => {
+            const row = document.createElement('div');
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.textContent = fileName;
+            const detail = document.createElement('small');
+            detail.textContent = error;
+            row.append(link, detail);
+            if (objectUrl) {
+                // A real tap on this link is a trusted gesture, so it works
+                // even if the browser dropped the automatic request.
+                const save = document.createElement('a');
+                save.className = 'erome-save-file';
+                save.href = objectUrl;
+                save.download = fileName;
+                save.textContent = t('saveFile');
+                save.onclick = () => {
+                    detail.textContent = t('saveRequested');
+                    const entry = manualDownloads.get(url);
+                    if (entry) entry.error = t('saveRequested');
+                    showNotification(t('saveRequested'), 'info');
+                    const pending = browserSaveQueuePending;
+                    if (pending && pending.url === url) {
+                        // Let the anchor's default action start the download
+                        // before the queue replaces this row.
+                        setTimeout(() => pending.advance(), 0);
+                    }
+                };
+                row.appendChild(save);
+            } else if (hasRequests()) {
+                const prepare = document.createElement('button');
+                prepare.type = 'button';
+                prepare.className = 'erome-btn erome-prepare-file';
+                prepare.textContent = t('prepareFile');
+                prepare.disabled = manualPreparationBusy || browserSaveQueueBusy;
+                prepare.onclick = () => prepareManualDownload(url);
+                row.appendChild(prepare);
+            }
+            container.append(row);
+        });
+    };
+
+    const offerManualDownload = (url, fileName, error, status = '') => {
+        const parsed = new URL(url, location.href);
+        if (!/^https?:$/.test(parsed.protocol)) return false;
+        manualDownloads.set(parsed.href, {fileName, error, status});
+        renderManualDownloads();
+        return true;
     };
 
     const startDownload = (url, fileName, onSuccess, onFailure, target = '_self', onProgress = () => {}) => {
+        if (needsBrowserSave()) {
+            startBrowserSaveQueue([{url, fileName}]);
+            // The mobile flow requests browser saving; it cannot confirm disk
+            // completion, so never route it through the success callback.
+            onFailure(t('saveRequested'), false);
+            return;
+        }
         let settled = false;
         const fail = (reason) => {
             if (settled) return;
             settled = true;
-            let fallbackStarted = false;
-            // Browser fallback is best effort and never counts as confirmed success.
-            try {
-                tryBrowserDownload(url, fileName, target);
-                fallbackStarted = true;
-            } catch (fallbackError) {
-                console.error('[Erome Downloader] Browser fallback failed:', fallbackError);
-            }
-            onFailure(getDownloadErrorMessage(reason), fallbackStarted);
+            const error = getDownloadErrorMessage(reason);
+            let manualAvailable = false;
+            try { manualAvailable = offerManualDownload(url, fileName, error); }
+            catch (error) { console.error('[Erome Downloader] Invalid media link:', error); }
+            onFailure(error, manualAvailable);
         };
 
         try {
+            if (typeof GM_download !== 'function') { fail(t('downloadUnavailable')); return; }
             GM_download({
                 url,
                 name: fileName,
                 saveAs: false,
                 timeout: MEDIA_TRANSFER_TIMEOUT,
-                headers: { Referer: location.href },
+                // In "Browser API" mode (the mode mobile setups are told to
+                // enable) the manager calls the browser's downloads API, which
+                // rejects forbidden headers such as Referer, so every download
+                // failed at once. Only send it in the manager's native mode.
+                ...(usesBrowserDownloadApi() ? {} : { headers: { Referer: location.href } }),
                 onload: () => {
                     if (settled) return;
                     settled = true;
+                    manualDownloads.delete(new URL(url, location.href).href);
+                    renderManualDownloads();
                     onSuccess();
                 },
                 onerror: fail,
@@ -1191,7 +1669,7 @@
                     if (settled) return;
                     onProgress(Number(progress.loaded) || 0, Number(progress.total) || 0);
                 },
-                onabort: () => fail('Download aborted'),
+                onabort: () => fail(t('downloadAborted')),
                 ontimeout: () => fail(t('requestTimeout'))
             });
         } catch (error) {
@@ -1200,6 +1678,18 @@
     };
 
     const downloadSingleInline = (item, btnElement) => {
+        if (needsBrowserSave()) {
+            btnElement.disabled = true;
+            btnElement.classList.add('loading');
+            startBrowserSaveQueue([{url: item.src, fileName: getFileName(item.src, item, item.id + 1)}], (saved, errors, busy) => {
+                btnElement.disabled = false;
+                btnElement.classList.remove('loading');
+                if (busy) return;
+                btnElement.textContent = saved && !errors ? t('downloadBtnDone') : t('downloadBtnFail');
+                setTimeout(() => { btnElement.textContent = t('downloadBtn'); }, saved && !errors ? 2000 : 3000);
+            });
+            return;
+        }
         btnElement.disabled = true;
         btnElement.classList.add('loading');
 
@@ -1209,10 +1699,12 @@
         const progressOperation = beginProgressOperation();
         setByteProgress(0, 0, false, progressOperation);
 
+        let inlineTimer = null;
         startDownload(
             item.src,
             fileName,
             () => {
+                clearTimeout(inlineTimer);
                 setByteProgress(totalBytes || loadedBytes, totalBytes || loadedBytes, true, progressOperation);
                 btnElement.disabled = false;
                 btnElement.classList.remove('loading');
@@ -1220,7 +1712,9 @@
                 setTimeout(() => { btnElement.textContent = t('downloadBtn'); }, 2000);
             },
             (error, fallbackStarted) => {
+                clearTimeout(inlineTimer);
                 hideProgress(0, progressOperation);
+                if (fallbackStarted) openModal();
                 btnElement.disabled = false;
                 btnElement.classList.remove('loading');
                 btnElement.textContent = fallbackStarted ? t('downloadBtn') : t('downloadBtnFail');
@@ -1239,6 +1733,12 @@
                 setByteProgress(loadedBytes, totalBytes, false, progressOperation);
             }
         );
+        inlineTimer = setTimeout(() => {
+            btnElement.disabled = false;
+            btnElement.classList.remove('loading');
+            btnElement.textContent = t('downloadBtn');
+            showToast(t('inlineDownloadTitle'), t('saveRequested'), 'info', 6000);
+        }, 5000);
     };
 
     const createTelegramFile = (blob, item, fileName) => {
@@ -1262,6 +1762,7 @@
     };
 
     const sendSingleToTelegramInline = (item, btnElement) => {
+        if (!hasRequests()) { reportCapability('requestsUnavailable'); return; }
         const token = TELEGRAM_BOT_TOKEN;
         const chatId = normalizeChatId(TELEGRAM_CHAT_ID);
 
@@ -1321,6 +1822,7 @@
                         }, 2000);
                     },
                     (errMsg) => {
+                        showTransferError(t('sendError', errMsg));
                         btnElement.disabled = false;
                         btnElement.classList.remove('loading');
                         btnElement.innerHTML = t('downloadBtnFail');
@@ -1334,6 +1836,7 @@
             },
             (error) => {
                 hideProgress(0, progressOperation);
+                showTransferError(t('downloadError', error));
                 btnElement.disabled = false;
                 btnElement.classList.remove('loading');
                 btnElement.innerHTML = t('downloadBtnFail');
@@ -1380,11 +1883,16 @@
         content.innerHTML = '';
         mediaItems.forEach((item, index) => {
             const itemDiv = document.createElement('div');
+            itemDiv.dataset.mediaId = String(item.id);
             itemDiv.className = 'erome-media-item' + (selectedItems.has(item.id) ? ' selected' : '');
             const preview = item.type === 'IMG' ? item.src : (item.element.poster || item.src);
             const fileName = getFileName(item.src, item, index + 1);
 
-            const checkbox = document.createElement('div');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = selectedItems.has(item.id);
+            checkbox.setAttribute('aria-label', fileName);
+            checkbox.onclick = (event) => { event.stopPropagation(); toggleSelection(item.id); };
             checkbox.className = 'erome-checkbox';
             const previewEl = document.createElement('img');
             previewEl.className = 'erome-media-preview';
@@ -1409,9 +1917,17 @@
         updateCounter();
     };
 
-    const toggleSelection = (id) => { selectedItems.has(id) ? selectedItems.delete(id) : selectedItems.add(id); renderMediaList(); };
-    const selectAll = () => { mediaItems.forEach(i => selectedItems.add(i.id)); renderMediaList(); };
-    const deselectAll = () => { selectedItems.clear(); renderMediaList(); };
+    const updateSelection = () => {
+        document.querySelectorAll('#erome-modal-content .erome-media-item').forEach(row => {
+            const selected = selectedItems.has(row.dataset.mediaId);
+            row.classList.toggle('selected', selected);
+            row.querySelector('.erome-checkbox').checked = selected;
+        });
+        updateCounter();
+    };
+    const toggleSelection = (id) => { selectedItems.has(id) ? selectedItems.delete(id) : selectedItems.add(id); updateSelection(); };
+    const selectAll = () => { mediaItems.forEach(i => selectedItems.add(i.id)); updateSelection(); };
+    const deselectAll = () => { selectedItems.clear(); updateSelection(); };
     const updateCounter = () => {
         const el = document.getElementById('erome-counter');
         if (el) el.textContent = t('counter', selectedItems.size);
@@ -1429,6 +1945,12 @@
             selectedItems.clear();
             updateCounter();
             showNotification(t('selectAtLeastOne'), 'error', 3000);
+            return;
+        }
+        if (needsBrowserSave()) {
+            startBrowserSaveQueue(selectedMedia.map((item, index) => ({
+                url: item.src, fileName: getFileName(item.src, item, index + 1)
+            })));
             return;
         }
         let done = 0;
@@ -1464,9 +1986,10 @@
         };
 
         let index = 0, active = 0;
+        const concurrency = downloadConcurrency();
         btn.classList.add('erome-btn-loading');
         const next = () => {
-            while (active < MAX_CONCURRENT_DOWNLOADS && index < total) {
+            while (active < concurrency && index < total) {
                 const itemIndex = index++;
                 const item = selectedMedia[itemIndex];
                 const transfer = transfers[itemIndex];
@@ -1476,12 +1999,12 @@
                 startDownload(
                     item.src,
                     fileName,
-                    () => { active--; onFinish('success', transfer); next(); },
+                    () => { active--; onFinish('success', transfer); queueMicrotask(next); },
                     (error, fallbackStarted) => {
                         if (!fallbackStarted) console.error('[Download] Error:', error);
                         active--;
                         onFinish(fallbackStarted ? 'fallback' : 'error', transfer);
-                        next();
+                        queueMicrotask(next);
                     },
                     '_self',
                     (loaded, itemTotal) => {
@@ -1502,6 +2025,7 @@
     };
 
     const testTelegramConnection = () => {
+        if (!hasRequests()) { reportCapability('requestsUnavailable'); return; }
         const rawId = document.getElementById('erome-chat-id-input').value.trim() || TELEGRAM_CHAT_ID;
         const chatId = normalizeChatId(rawId);
         const token = TELEGRAM_BOT_TOKEN;
@@ -1518,7 +2042,7 @@
                 () => showNotification(t('connectionSuccess', chatId), 'success', 5000),
                 (message) => showNotification(message, 'error', 8000)
             );
-            GM_xmlhttpRequest({
+            gmXhr({
                 method: 'POST',
                 url: `https://api.telegram.org/bot${token}/sendMessage`,
                 headers: { 'Content-Type': 'application/json' },
@@ -1552,7 +2076,7 @@
         };
 
         try {
-            GM_xmlhttpRequest({
+            gmXhr({
                 method: 'GET',
                 url,
                 responseType: 'blob',
@@ -1595,6 +2119,7 @@
     };
 
     const getRemoteFileSize = (url, onDone) => {
+        if (!hasRequests()) { onDone(0); return; }
         let settled = false;
         const done = (size = 0) => {
             if (settled) return;
@@ -1603,7 +2128,7 @@
         };
 
         try {
-            GM_xmlhttpRequest({
+            gmXhr({
                 method: 'HEAD',
                 url,
                 anonymous: false,
@@ -1636,7 +2161,7 @@
                     active--;
                     completed++;
                     if (completed === items.length) onDone(sizes);
-                    else next();
+                    else queueMicrotask(next);
                 });
             }
         };
@@ -1736,7 +2261,7 @@
         formData.append(upload.field, item.blob, item.fileName);
 
         try {
-            GM_xmlhttpRequest({
+            gmXhr({
                 method: 'POST',
                 url: `https://api.telegram.org/bot${token}/${upload.method}`,
                 data: formData,
@@ -1774,7 +2299,7 @@
         formData.append('media', JSON.stringify(mediaArray));
 
         try {
-            GM_xmlhttpRequest({
+            gmXhr({
                 method: 'POST',
                 url: `https://api.telegram.org/bot${token}/sendMediaGroup`,
                 data: formData,
@@ -1830,6 +2355,7 @@
     };
 
     const sendToTelegram = () => {
+        if (!hasRequests()) { reportCapability('requestsUnavailable'); return; }
         const rawId = document.getElementById('erome-chat-id-input').value.trim() || TELEGRAM_CHAT_ID;
         const chatId = normalizeChatId(rawId);
         const token = TELEGRAM_BOT_TOKEN;
@@ -1841,7 +2367,7 @@
         if (selectedItems.size === 0) { showNotification(t('selectAtLeastOneMedia'), 'error', 3000); return; }
 
         TELEGRAM_CHAT_ID = chatId;
-        GM_setValue('tg_chat_id', chatId);
+        writeValue('tg_chat_id', chatId);
         saveChatToHistory(chatId, rawId);
 
         const btn = document.getElementById('erome-send-telegram');
@@ -1853,6 +2379,8 @@
             showNotification(t('selectAtLeastOneMedia'), 'error', 3000);
             return;
         }
+        document.getElementById('erome-transfer-errors').replaceChildren();
+        document.getElementById('erome-transfer-errors').hidden = true;
         let done = 0, errors = 0;
         const progressOperation = beginProgressOperation();
 
@@ -1861,7 +2389,7 @@
         setProgress(0, total, progressOperation);
         showNotification(t('preparingSend', total), 'info');
 
-        const BATCH_SIZE = 10;
+        const BATCH_SIZE = coarsePointer() ? 2 : 10;
         const batches = [];
         for (let i = 0; i < selectedMedia.length; i += BATCH_SIZE) {
             batches.push(selectedMedia.slice(i, i + BATCH_SIZE));
@@ -1938,7 +2466,10 @@
                         errors += failedDownloads.length;
                         done += failedDownloads.length;
                         setProgress(done, total, progressOperation);
-                        failedDownloads.forEach(result => console.error('[TG] Media download failed:', result.error));
+                        failedDownloads.forEach(result => {
+                            console.error('[TG] Media download failed:', result.error);
+                            showTransferError(t('groupDownloadError', batchNum, result.error));
+                        });
                     }
 
                     if (mediaGroup.length === 0) {
@@ -1954,15 +2485,24 @@
 
                     showNotification(t('sendingGroup', batchNum, batches.length), 'info');
 
+                    const releaseGroup = () => {
+                        mediaGroup.forEach(media => { media.blob = null; });
+                        mediaGroup.length = 0;
+                        results.length = 0;
+                        downloadPromises.length = 0;
+                    };
                     const onGroupDone = () => {
                         done += mediaGroup.length;
+                        releaseGroup();
                         setProgress(done, total, progressOperation);
                         currentBatch++;
                         setTimeout(() => processBatch(), 1000);
                     };
                     const onGroupError = (errMsg, failedCount = mediaGroup.length) => {
+                        showTransferError(t('groupError', batchNum, errMsg));
                         errors += failedCount;
                         done += mediaGroup.length;
+                        releaseGroup();
                         setProgress(done, total, progressOperation);
                         showNotification(t('groupError', batchNum, errMsg), 'error', 5000);
                         currentBatch++;
@@ -1987,7 +2527,9 @@
         if (counterEl) counterEl.textContent = t('counter', selectedItems.size);
 
         const trigger = document.getElementById('erome-sidebar-trigger');
-        if (trigger) trigger.title = t('openManager');
+        if (trigger) { trigger.title = t('openManager'); trigger.setAttribute('aria-label', t('openManager')); }
+        updateCapabilities();
+        renderManualDownloads();
         const progress = document.getElementById('erome-progress-bar-wrap');
         if (progress) progress.setAttribute('aria-label', t('downloadProgressAria'));
 
@@ -2042,22 +2584,49 @@
         addInlineButtons();
     };
 
+    let modalOpen = false;
+    let closeTimer;
+    let previousFocus;
+    const updateViewport = () => {
+        if (!modalOpen) return;
+        const modal = document.getElementById('erome-modal');
+        const viewport = window.visualViewport;
+        modal.style.setProperty('--erome-visible-height', (viewport ? viewport.height : window.innerHeight) + 'px');
+        modal.style.setProperty('--erome-visible-top', (viewport ? viewport.offsetTop : 0) + 'px');
+        const width = viewport ? viewport.width : window.innerWidth;
+        const panelWidth = Math.min(520, width * 0.85);
+        modal.style.width = panelWidth + 'px';
+        modal.style.left = ((viewport ? viewport.offsetLeft : 0) + width - panelWidth) + 'px';
+        modal.style.right = 'auto';
+    };
     const openModal = () => {
+        clearTimeout(closeTimer);
+        if (!modalOpen) {
+            previousFocus = document.activeElement;
+        }
+        modalOpen = true;
         collectMedia();
         const overlay = document.getElementById('erome-modal-overlay');
         const modal = document.getElementById('erome-modal');
         overlay.style.display = 'block';
         modal.classList.remove('closing');
+        document.getElementById('erome-sidebar-trigger').setAttribute('aria-expanded', 'true');
+        updateViewport();
+        updateCapabilities();
         renderMediaList();
         renderChatHistory();
+        document.getElementById('erome-modal-close').focus({preventScroll: true});
     };
 
     const closeModal = () => {
+        if (!modalOpen) return;
         const modal = document.getElementById('erome-modal');
-        const overlay = document.getElementById('erome-modal-overlay');
         modal.classList.add('closing');
-        setTimeout(() => {
-            overlay.style.display = 'none';
+        closeTimer = setTimeout(() => {
+            document.getElementById('erome-modal-overlay').style.display = 'none';
+            modalOpen = false;
+            document.getElementById('erome-sidebar-trigger').setAttribute('aria-expanded', 'false');
+            if (previousFocus && previousFocus.isConnected) previousFocus.focus({preventScroll: true});
         }, 250);
     };
 
@@ -2065,6 +2634,25 @@
         injectStyles();
         createSidebarTrigger();
         createModal();
+        // Alternate entry point if the page covers or hides the launcher.
+        if (typeof GM_registerMenuCommand === 'function') {
+            try { GM_registerMenuCommand(t('openManager'), openModal); }
+            catch (error) { console.warn('[Erome Downloader] Menu registration failed:', error); }
+        }
+        updateCapabilities();
+        renderManualDownloads();
+        window.addEventListener('pagehide', (event) => {
+            if (!event.persisted) revokeAllObjectUrls();
+        });
+        window.addEventListener('resize', updateViewport);
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', updateViewport);
+            window.visualViewport.addEventListener('scroll', updateViewport);
+        }
+        document.addEventListener('keydown', event => {
+            if (!modalOpen) return;
+            if (event.key === 'Escape') { event.preventDefault(); closeModal(); }
+        });
 
         addInlineButtons();
 
