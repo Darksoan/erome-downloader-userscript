@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.4.0] - 2026-10-21
+
+Improves media discovery and download reliability based on an analysis of how
+erome.com structures album pages (server-rendered HTML, one `.media-group` per
+media, no media API).
+
+### Added
+- Telegram uploads now include the album title as a caption on the first file of each album.
+- Media discovery deduplicates by the enclosing media block, so the blurred
+  `.img-back` copy and the `.video-lg` lightbox duplicate are no longer counted.
+- Video sources are chosen by highest `res` label when several are offered.
+- Images prefer the full-size URL stored in `.img[data-src]` over a possible thumbnail `src`.
+- Video poster is read from `poster` or lazy `data-poster`, fixing broken previews.
+
+### Changed
+- Download `Referer` is standardized to `https://www.erome.com/`, which is the
+  only value accepted by the hotlink-protected video CDN (`v*.erome.com`).
+- Each media item now carries `albumTitle` and `mediaGuid` for future naming/metadata use.
+
+### Notes
+- Erome serves a single 720p source (`_720p.mp4`); requests for the original or
+  1080p variants return HTTP 410. The script already downloads the best available.
+- Video CDN returns 403 without an erome.com Referer; the tab-save path
+  (`downloadBlob`) already sends it and remains the reliable fallback.
+
 ## [4.3.9] - 2026-10-20
 
 Consolidates the 4.3.x mobile-compatibility work.

@@ -111,6 +111,21 @@ The interface is available in Portuguese (BR), English (US), and Spanish. Use th
 - The bot must be added to the group/channel and must have permission to send media.
 - Telegram accepts files up to 50 MB. Larger files are reported before they are downloaded.
 
+## How Erome organizes media
+
+Album pages (`/a/{albumId}`) are server-rendered HTML; there is no media API, so
+the script discovers media from the DOM:
+
+- Each media is a `div[id="{mediaGuid}"] > div.media-group[id="{N}"]` block.
+- Images: `.img[data-src]` holds the full-size URL; `.img-front` and `.img-back`
+  are the same image (the latter is a blurred overlay).
+- Videos: `.video > video` (visible player) plus a `.video-lg` lightbox duplicate
+  and a `.img[data-html]` placeholder. Only a 720p source (`_720p.mp4`) exists;
+  original/1080p variants return HTTP 410.
+- The video CDN (`v*.erome.com`) is hotlink-protected: requests without an
+  erome.com `Referer` return 403. Images (`s*.erome.com`) are unrestricted.
+  `Accept-Ranges: bytes` is supported; there is no `Content-Disposition`.
+
 ## Tests
 
 The repository includes a Playwright integration suite for mobile compatibility:

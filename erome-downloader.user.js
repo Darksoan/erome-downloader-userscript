@@ -14,7 +14,7 @@
 // @connect      *.erome.com
 // @connect      api.telegram.org
 // @run-at       document-end
-// @version      4.3.9
+// @version      4.4.0
 // @license      MIT
 // ==/UserScript==
 
@@ -1251,16 +1251,33 @@
     const getMediaSource = (media) => {
         // Prefer loaded media URL; lazy attributes may still point to thumbnails.
         if (media.tagName === 'IMG') {
-            return toAbsoluteUrl(media.currentSrc
+            // Erome stores the full-size URL on the parent .img container as
+            // data-src; the img element itself may still point at a thumbnail.
+            const imgContainer = media.closest ? media.closest('.img') : null;
+            const containerSource = imgContainer && imgContainer.getAttribute('data-src');
+            return toAbsoluteUrl(containerSource
+                || media.currentSrc
                 || media.getAttribute('src')
                 || media.getAttribute('data-src')
                 || media.getAttribute('data-original')
                 || '');
         }
 
-        const source = media.querySelector('source');
+        // Pick the highest-resolution <source> when several are offered
+        // (Erome currently ships a single 720p source, but be defensive).
+        const sources = Array.from(media.querySelectorAll('source'));
+        let bestSource = null;
+        let bestRes = -1;
+        sources.forEach((source) => {
+            const res = parseInt(source.getAttribute('res') || source.getAttribute('data-res') || '0', 10) || 0;
+            if (res >= bestRes) { bestRes = res; bestSource = source; }
+        });
+        if (!bestSource && sources.length) bestSource = sources[0];
+        const sourceUrl = bestSource
+            ? (bestSource.currentSrc || bestSource.getAttribute('src') || bestSource.src || '')
+            : '';
         return toAbsoluteUrl(media.currentSrc
-            || (source && (source.currentSrc || source.getAttribute('src') || source.src))
+            || sourceUrl
             || media.getAttribute('data-src')
             || media.getAttribute('src')
             || '');
@@ -1269,12 +1286,29 @@
     const collectMedia = () => {
         mediaItems = [];
         const seenUrls = new Set();
+        const seenGuids = new Set();
         const mediaElements = document.querySelectorAll('.media-group .video video, .media-group .img img');
 
+        // Album title is reused for filenames and Telegram captions.
+        const albumTitle = (document.querySelector('h1.album-title-page')?.textContent || '').trim();
+
         mediaElements.forEach((media) => {
+            // Dedupe by the enclosing media block so a single logical media
+            // (which may expose several DOM nodes: img-front/img-back,
+            // .video/.video-lg) is never counted twice.
+            const blockParent = media.closest ? media.closest('.media-group') : null;
+            const enclosingWrapper = blockParent && blockParent.parentElement;
+            const mediaGuid = (enclosingWrapper && enclosingWrapper.id) ? enclosingWrapper.id : '';
+            if (mediaGuid && seenGuids.has(mediaGuid)) return;
+
             const src = getMediaSource(media);
-            if (!src || seenUrls.has(src)) return;
+            if (!src || seenUrls.has(src)) {
+                // Still mark the guid as consumed so we don't reprocess it.
+                if (mediaGuid) seenGuids.add(mediaGuid);
+                return;
+            }
             seenUrls.add(src);
+            if (mediaGuid) seenGuids.add(mediaGuid);
 
             let originalFileName = '';
             try {
@@ -1284,7 +1318,15 @@
                 originalFileName = src.split('/').pop().split('?')[0];
             }
 
-            mediaItems.push({ id: src, type: media.tagName, src, element: media, originalFileName });
+            mediaItems.push({
+                id: src,
+                type: media.tagName,
+                src,
+                element: media,
+                originalFileName,
+                albumTitle,
+                mediaGuid
+            });
         });
         const currentIds = new Set(mediaItems.map(item => item.id));
         selectedItems = new Set([...selectedItems].filter(id => currentIds.has(id)));
@@ -1308,12 +1350,14 @@
             if (!src) return;
 
             const mediaType = img ? 'IMG' : 'VIDEO';
+            const albumTitle = (document.querySelector('h1.album-title-page')?.textContent || '').trim();
             const mediaItem = {
                 id: index,
                 type: mediaType,
                 src: src,
                 element: mediaElement,
-                originalFileName: src.split('/').pop().split('?')[0]
+                originalFileName: src.split('/').pop().split('?')[0],
+                albumTitle
             };
 
             const actionsDiv = document.createElement('div');
@@ -1656,7 +1700,7 @@
                 // enable) the manager calls the browser's downloads API, which
                 // rejects forbidden headers such as Referer, so every download
                 // failed at once. Only send it in the manager's native mode.
-                ...(usesBrowserDownloadApi() ? {} : { headers: { Referer: location.href } }),
+                ...(usesBrowserDownloadApi() ? {} : { headers: { Referer: 'https://www.erome.com/' } }),
                 onload: () => {
                     if (settled) return;
                     settled = true;
@@ -1885,7 +1929,10 @@
             const itemDiv = document.createElement('div');
             itemDiv.dataset.mediaId = String(item.id);
             itemDiv.className = 'erome-media-item' + (selectedItems.has(item.id) ? ' selected' : '');
-            const preview = item.type === 'IMG' ? item.src : (item.element.poster || item.src);
+            const videoPoster = item.element.getAttribute('poster')
+                || (item.element.dataset && item.element.dataset.poster)
+                || '';
+            const preview = item.type === 'IMG' ? item.src : (videoPoster || item.src);
             const fileName = getFileName(item.src, item, index + 1);
 
             const checkbox = document.createElement('input');
@@ -2259,6 +2306,7 @@
         const formData = new FormData();
         formData.append('chat_id', String(chatId));
         formData.append(upload.field, item.blob, item.fileName);
+        if (item.caption) formData.append('caption', String(item.caption));
 
         try {
             gmXhr({
@@ -2290,10 +2338,12 @@
 
             formData.append(attachName, item.blob, item.fileName);
 
-            return {
+            const entry = {
                 type: getTelegramUpload(item).albumType,
                 media: `attach://${attachName}`
             };
+            if (idx === 0 && item.caption) entry.caption = String(item.caption);
+            return entry;
         });
 
         formData.append('media', JSON.stringify(mediaArray));
@@ -2371,6 +2421,7 @@
         saveChatToHistory(chatId, rawId);
 
         const btn = document.getElementById('erome-send-telegram');
+        const albumTitle = (document.querySelector('h1.album-title-page')?.textContent || '').trim();
         const selectedMedia = mediaItems.filter(i => selectedItems.has(i.id));
         const total = selectedMedia.length;
         if (total === 0) {
@@ -2461,6 +2512,10 @@
                     const mediaGroup = results
                         .filter(result => result.ok)
                         .map(result => result.media);
+
+                    if (currentBatch === 0 && mediaGroup.length > 0 && albumTitle) {
+                        mediaGroup[0].caption = albumTitle;
+                    }
 
                     if (failedDownloads.length > 0) {
                         errors += failedDownloads.length;
